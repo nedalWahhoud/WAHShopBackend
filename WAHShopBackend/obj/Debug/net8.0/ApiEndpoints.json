@@ -97,13 +97,13 @@
   {
     "ContainingType": "WAHShopBackend.Controllers.CategoriesController",
     "Method": "GetCategoryById",
-    "RelativePath": "api/Categories/getCategoryById/{id}",
+    "RelativePath": "api/Categories/getCategoryById/{categoryId}",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
     "Parameters": [
       {
-        "Name": "id",
+        "Name": "categoryId",
         "Type": "System.Int32",
         "IsRequired": true
       }
@@ -147,6 +147,70 @@
         "Name": "excludeProductsIds",
         "Type": "System.Collections.Generic.List\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
         "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WAHShopBackend.Controllers.DiscountsController",
+    "Method": "AddDiscountCategory",
+    "RelativePath": "api/Discounts/addDiscountCategory",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "newDiscountCategory",
+        "Type": "WAHShopBackend.Models.DiscountCategory",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WAHShopBackend.Controllers.DiscountsController",
+    "Method": "AddDiscountCode",
+    "RelativePath": "api/Discounts/addDiscountCode",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "newDiscountCodes",
+        "Type": "WAHShopBackend.Models.DiscountCodes",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WAHShopBackend.Controllers.DiscountsController",
+    "Method": "CheckDiscountCategory",
+    "RelativePath": "api/Discounts/checkDiscountCategory/{code}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "code",
+        "Type": "System.String",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WAHShopBackend.Controllers.DiscountsController",
+    "Method": "CheckDiscountCode",
+    "RelativePath": "api/Discounts/checkDiscountCode/{code}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "code",
+        "Type": "System.String",
+        "IsRequired": true
       }
     ],
     "ReturnTypes": []
@@ -235,6 +299,16 @@
     "ReturnTypes": []
   },
   {
+    "ContainingType": "WAHShopBackend.Controllers.InvoicesController",
+    "Method": "GetBankTransferDetails",
+    "RelativePath": "api/Invoices/getBankTransferDetails",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "WAHShopBackend.Controllers.OrdersController",
     "Method": "AddOrder",
     "RelativePath": "api/Orders/addOrder",
@@ -245,6 +319,27 @@
       {
         "Name": "order",
         "Type": "WAHShopBackend.Models.Order",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WAHShopBackend.Controllers.OrdersController",
+    "Method": "AddOrUpdateTrackingNumber",
+    "RelativePath": "api/Orders/addOrUpdateTrackingNumber/{orderId}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "orderId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "trackingNumber",
+        "Type": "System.String",
         "IsRequired": true
       }
     ],
@@ -294,15 +389,15 @@
   {
     "ContainingType": "WAHShopBackend.Controllers.OrdersController",
     "Method": "GetOrderCountByStatusId",
-    "RelativePath": "api/Orders/getOrderCountByStatusId{statusId}",
+    "RelativePath": "api/Orders/getOrderCountByStatusId",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
     "Parameters": [
       {
-        "Name": "statusId",
-        "Type": "System.Int32",
-        "IsRequired": true
+        "Name": "statusIds",
+        "Type": "System.Collections.Generic.List\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
       }
     ],
     "ReturnTypes": []
@@ -311,6 +406,42 @@
     "ContainingType": "WAHShopBackend.Controllers.OrdersController",
     "Method": "GetOrders",
     "RelativePath": "api/Orders/getOrders/{userId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "userId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "Items",
+        "Type": "System.Collections.Generic.List\u00601[[WAHShopBackend.Models.Order, WAHShopBackend, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "AllItemsLoaded",
+        "Type": "System.Boolean",
+        "IsRequired": false
+      },
+      {
+        "Name": "CurrentPage",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "PageSize",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WAHShopBackend.Controllers.OrdersController",
+    "Method": "GetOrders1",
+    "RelativePath": "api/Orders/getOrderscustomer/{userId}",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
@@ -365,15 +496,30 @@
   },
   {
     "ContainingType": "WAHShopBackend.Controllers.OrdersController",
-    "Method": "UpdateOrder",
-    "RelativePath": "api/Orders/updateOrder",
+    "Method": "GetShippingProvider",
+    "RelativePath": "api/Orders/getShippingProvider",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WAHShopBackend.Controllers.OrdersController",
+    "Method": "UpdateStatusOrder",
+    "RelativePath": "api/Orders/updateStatusOrder/{orderId}",
     "HttpMethod": "PUT",
     "IsController": true,
     "Order": 0,
     "Parameters": [
       {
-        "Name": "order",
-        "Type": "WAHShopBackend.Models.Order",
+        "Name": "orderId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "newStatusId",
+        "Type": "System.Int32",
         "IsRequired": true
       }
     ],
@@ -640,6 +786,22 @@
       {
         "Name": "updateProfile",
         "Type": "WAHShopBackend.Models.UpdateProfile",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "WAHShopBackend.Controllers.UsersController",
+    "Method": "UserActivate",
+    "RelativePath": "api/Users/userActivate",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "activateRequest",
+        "Type": "WAHShopBackend.Models.ActivateRequest",
         "IsRequired": true
       }
     ],

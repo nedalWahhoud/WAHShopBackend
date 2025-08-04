@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("WAHShopBackend")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+eb9cf9a257b06ca742a392cbdaf3dd803886f981")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2d1b7eca132aefba31ba2119f61cb48e63af2fbe")]
 [assembly: System.Reflection.AssemblyProductAttribute("WAHShopBackend")]
 [assembly: System.Reflection.AssemblyTitleAttribute("WAHShopBackend")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

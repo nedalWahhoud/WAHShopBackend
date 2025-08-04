@@ -10,6 +10,8 @@ namespace WAHShopBackend.Controllers
     [Route("api/[controller]")]
     public class ProductsController(MyDbContext context) : ControllerBase
     {
+        private readonly MyDbContext _context = context;
+
         [HttpPost("addProduct")]
         public async Task<IActionResult> AddProduct([FromBody] Product newProduct)
         {
@@ -32,7 +34,7 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
-        private readonly MyDbContext _context = context;
+        
         [HttpPost("getProductByIds")]
         public async Task<IActionResult> GetProductByIds([FromBody] List<int> ids)
         {

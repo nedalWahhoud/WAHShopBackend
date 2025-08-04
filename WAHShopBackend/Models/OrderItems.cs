@@ -1,4 +1,6 @@
-﻿namespace WAHShopBackend.Models
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace WAHShopBackend.Models
 {
     public class OrderItems
     {

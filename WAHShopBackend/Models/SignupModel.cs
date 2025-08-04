@@ -10,5 +10,6 @@ namespace WAHShopBackend.Models
         public string PasswordAgain { get; set; } = string.Empty;
         public string BirthDate { get; set; } = DateTime.Now.ToString("yyyy.MM.dd");
         public bool IsGuest { get; set; } = false;
+        public string SignupProvider { get; set; } = string.Empty;
     }
 }

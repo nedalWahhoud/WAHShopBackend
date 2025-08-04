@@ -29,13 +29,13 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = "Internal server error" });
             }
         }
-        [HttpGet("getCategoryById/{id}")]
-        public async Task<IActionResult> GetCategoryById(int id)
+        [HttpGet("getCategoryById/{categoryId}")]
+        public async Task<IActionResult> GetCategoryById(int categoryId)
         {
             try
             {
                 var category = await _context.Categories
-                    .FirstOrDefaultAsync(c => c.Id == id);
+                    .FirstOrDefaultAsync(c => c.Id == categoryId);
                 if (category == null)
                 {
                     return NotFound(new ValidationResult { Result = false, Message = "Category not found" });

@@ -15,7 +15,7 @@ namespace WAHShopBackend.Controllers
         {
             getItems ??= new();
 
-            excludeProductsIds = excludeProductsIds ?? [];
+            excludeProductsIds ??= [];
             if (groupProductsId <= 0)
             {
                 return BadRequest(new ValidationResult { Result = false, Message = "Invalid group products ID." });
@@ -27,7 +27,7 @@ namespace WAHShopBackend.Controllers
                     .Where(p => p.ProductGroupID == groupProductsId && !excludeProductsIds.Contains(p.Id) &&
                     p.Quantity > 0)
                     .ToListAsync();
-                if (products == null || !products.Any())
+                if (products == null || products.Count == 0)
                 {
                     return NotFound(new ValidationResult { Result = false, Message = "No products found for the specified group." });
                 }
