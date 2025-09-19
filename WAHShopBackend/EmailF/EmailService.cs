@@ -211,7 +211,8 @@ namespace WAHShopBackend.EmailF
         {
             try
             {
-                var confirmationLink = $"https://localhost:7078/confirmemail?userId={Uri.EscapeDataString(user.Id.ToString())}&token={Uri.EscapeDataString(token)}";
+                string forntendUrl = _configuration["AppSettings:FrontendUrl"] ?? "";
+                var confirmationLink = $"{forntendUrl}/confirmemail?userId={Uri.EscapeDataString(user.Id.ToString())}&token={Uri.EscapeDataString(token)}";
 
                 EmailRequest emailRequest = new ();
                 if (user == null || string.IsNullOrWhiteSpace(user.Email))

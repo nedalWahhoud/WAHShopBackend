@@ -8,5 +8,6 @@
         public string? Description_ar { get; set; }
         public int? BankTransferDetailsId { get; set; }
         public BankTransferDetails? BankTransferDetails { get; set; }
+        public double? MinimumPurchaseAmount { get; set; }
     }
 }

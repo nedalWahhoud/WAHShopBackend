@@ -377,5 +377,22 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult() { Result = false, Message = $"Beim Aktualisieren der Trackingnummer ist ein Fehler aufgetreten: {ex.InnerException?.Message ?? ex.Message}" });
             }
         }
+        [HttpGet("CheckIfWithinDeliveryRange/{postalCode}")]
+        public async Task<IActionResult> CheckIfWithinDeliveryRange(string postalCode)
+        {
+            try
+            {
+                var Area = await _context.OurDeliveryServiceArea
+                            .FirstOrDefaultAsync(a => a.PostalCode == postalCode && a.IsActive);
+                if (Area != null)
+                    return Ok(Area);
+                else
+                    return NotFound(new ValidationResult() { Result = false, Message = "NotOurDelivery" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ValidationResult() { Result = false, Message = ex.Message });
+            }
+        }
     }
 }

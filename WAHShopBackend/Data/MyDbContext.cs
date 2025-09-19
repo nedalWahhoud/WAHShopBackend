@@ -22,5 +22,18 @@ namespace WAHShopBackend.Data
         public DbSet<DiscountCategory> DiscountCategory { get; set; }
         public DbSet<BankTransferDetails> BankTransferDetails{ get; set;}
         public DbSet<ShippingProvider> ShippingProviders { get; set; }
+        public DbSet<OurDeliveryServiceArea> OurDeliveryServiceArea { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            // هنا تكتب العلاقات
+            modelBuilder.Entity<Order>()
+                .HasMany(o => o.OrderItems)
+                .WithOne(oi => oi.Order)
+                .HasForeignKey(oi => oi.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+        }
     }
 }

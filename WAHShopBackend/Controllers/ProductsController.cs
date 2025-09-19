@@ -54,6 +54,23 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
+        [HttpGet("getProductById/{id}")]
+        public async Task<IActionResult> GetProductById(int id)
+        {
+            try
+            {
+                var product = await _context.Products.Include(p => p.ProductGroup)
+                    .FirstOrDefaultAsync(p => p.Id == id);
+                if (product != null)
+                    return Ok(product);
+                else
+                    return BadRequest(new ValidationResult { Result = false, Message = "Product not found." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
+            }
+        }
         [HttpGet("getProducts")]
         public async Task<IActionResult> GetProducts([FromQuery] GetItems<Product> _getItems)
         {
@@ -92,26 +109,6 @@ namespace WAHShopBackend.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
-            }
-        }
-        [HttpGet("getCategories")]
-        public async Task<ActionResult<GetItems<Categories>>> GetCategories()
-        {
-            try
-            {
-                var categories = await _context.Categories.ToListAsync();
-
-                var getItems = new GetItems<Categories>
-                {
-                    Items = categories,
-                    AllItemsLoaded = true
-                };
-
-                return Ok(getItems);
-            }
-            catch
-            {
-                return StatusCode(500, new { error = "Internal server error" });
             }
         }
         [HttpGet("getManufacturers")]
@@ -194,36 +191,6 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
-        [HttpGet("searchProducts")]
-        public async Task<IActionResult> SearchProducts([FromQuery] string query, [FromQuery] List<int>? excludeIds)
-        {
-            if (string.IsNullOrWhiteSpace(query))
-            {
-                return BadRequest(new ValidationResult { Result = false, Message = "Search query cannot be empty." });
-            }
-            try
-            {
-                var results = await _context.Products
-                    .Include (p => p.Category)
-                    .Include(p => p.TaxRate)
-                    .Include(p=> p.ProductGroup)
-                    .Where(p => p.Quantity > 0 &&
-                                !excludeIds!.Contains(p.Id) &&
-                                (p.Name_de!.ToLower().Contains(query.ToLower()) ||
-                                p.Description_de!.ToLower().Contains(query.ToLower()) ||
-                                p.Name_ar!.ToLower().Contains(query.ToLower()) ||
-                                p.Description_ar!.ToLower().Contains(query.ToLower()) ||
-                                p.Category != null && p.Category.Name_de!.ToLower().Contains(query.ToLower()) ||
-                                p.Category != null && p.Category.Name_ar!.ToLower().Contains(query.ToLower())))
-                    .OrderBy(p => p.Name_de)
-                    .Take(11)
-                    .ToListAsync();
-                return Ok(results);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
-            }
-        }
+      
     }
 }

@@ -19,14 +19,14 @@ namespace WAHShopBackend.Controllers
         {
             try
             {
-                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == emailRequest.ToEmail.ToLower());
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == emailRequest.ToEmail.ToLower()
+                && u.IsGuest == false && u.SignupProvider == "Manual" && u.IsAktiv == true);
                 if (user == null)
                 {
                     return BadRequest(new ValidationResult { Result = false, Message = "User not found." });
                 }
 
                 // add Random Password to database
-
                 string randomPassword = GenerateRandomPassword();
                 user.Password = BCrypt.Net.BCrypt.HashPassword(randomPassword.Trim());
                 PasswordReset passwordReset = new PasswordReset
@@ -73,7 +73,10 @@ namespace WAHShopBackend.Controllers
 
             try
             {
-                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == forgotPassword.Email.ToLower());
+                var user = await _context.Users.FirstOrDefaultAsync(u =>
+                u.Email.ToLower() == forgotPassword.Email.ToLower()
+                && u.IsGuest == false && u.SignupProvider == "Manual" && u.IsAktiv == true);
+
                 if (user == null)
                 {
                     return BadRequest(new ValidationResult { Result = false, Message = "User not found." });

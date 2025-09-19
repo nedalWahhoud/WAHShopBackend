@@ -9,6 +9,7 @@ using System.IdentityModel.Tokens.Jwt;
 using Microsoft.Extensions.Options;
 using WAHShopBackend.EmailF;
 using Microsoft.AspNetCore.Identity;
+using System.Reflection.Emit;
 
 namespace WAHShopBackend.Controllers
 {
@@ -33,7 +34,7 @@ namespace WAHShopBackend.Controllers
                        u.UserName!.ToLower() == loginModel.UserName!.ToLower()
                        || u.Email!.ToLower() == loginModel.Email!.ToLower()
                        || u.Email!.ToLower() == loginModel.UserName!.ToLower() 
-                       && u.IsGuest == false && u.SignupProvider == "Manual");
+                       && u.IsGuest == false && u.SignupProvider == "Manual" && u.IsAktiv == true);
 
                     if (user == null || !BCrypt.Net.BCrypt.Verify(loginModel!.Password.Trim(), user!.Password!.Trim()) || user.IsGuest == true)
                     {
@@ -54,7 +55,7 @@ namespace WAHShopBackend.Controllers
                        u.UserName!.ToLower() == loginModel.UserName!.ToLower()
                        || u.Email!.ToLower() == loginModel.Email!.ToLower()
                        || u.Email!.ToLower() == loginModel.UserName!.ToLower()
-                       && u.IsGuest == false && u.SignupProvider == "Google");
+                       && u.IsGuest == false && u.SignupProvider == "Google" && u.IsAktiv == true);
 
                     // wenn der User nicht existiert, dann signup ohne Passwort und bestätigungslink da es ein Google Login ist
                     if (user == null)
@@ -106,7 +107,8 @@ namespace WAHShopBackend.Controllers
                new Claim(ClaimTypes.Name, user.UserName!),
                new Claim(ClaimTypes.Email, user.Email!),
                new Claim(ClaimTypes.Role, user.Role!),
-               new Claim(ClaimTypes.DateOfBirth, user.BirthDate)
+               new Claim(ClaimTypes.DateOfBirth, user.BirthDate),
+               new Claim("SignupProvider", user.SignupProvider)
              };
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Value.Key!));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -144,19 +146,21 @@ namespace WAHShopBackend.Controllers
             try
             {
                 // if user name exist
-                if (await _context.Users.AnyAsync(u => u.UserName.ToLower() == signupModel.UserName.ToLower()))
+              /*  var checkUsername = await _context.Users.AnyAsync(u => u.UserName.ToLower() == signupModel.UserName.ToLower() && u.IsGuest == false);
+                if (checkUsername)
                 {
-                    return BadRequest(new ValidationResult {Result = false , Message = "Benutzername bereits existiert" });
-                }
+                    return BadRequest(new ValidationResult { Result = false, Message = "Benutzername bereits existiert" });
+                }*/
                 // if user email exist
-                if (await _context.Users.AnyAsync(u => u.Email.ToLower() == signupModel.Email.ToLower()))
+                var checkEmail = await _context.Users.AnyAsync(u => u.Email.ToLower() == signupModel.Email.ToLower() && u.IsGuest == false);
+                if (checkEmail)
                 {
-                    return BadRequest(new ValidationResult {Result = false, Message = "Email bereits existiert" });
+                    return BadRequest(new ValidationResult { Result = false, Message = "Email bereits existiert" });
                 }
                 // password check
                 if (signupModel.Password != signupModel.PasswordAgain)
                 {
-                    return BadRequest(new ValidationResult{ Result = false, Message = "Passwörter stimmen nicht überein" });
+                    return BadRequest(new ValidationResult { Result = false, Message = "Passwörter stimmen nicht überein" });
                 }
                 else if (string.IsNullOrEmpty(signupModel.UserName) || string.IsNullOrEmpty(signupModel.Password) || string.IsNullOrEmpty(signupModel.Email))
                 {
@@ -171,32 +175,39 @@ namespace WAHShopBackend.Controllers
                     Role = "user",
                     BirthDate = signupModel.BirthDate,
                     IsAktiv = false,
+                    SignupProvider = signupModel.SignupProvider
                 };
 
                 _context.Users.Add(user);
-                await _context.SaveChangesAsync();
-
-                // Send confirmation email
-                UserIdentity userIdentity = new UserIdentity()
+                var addResult = await _context.SaveChangesAsync();
+                if (addResult > 0)
                 {
-                    Id = user.Id.ToString(),
-                    UserName = user.UserName,
-                    Email = user.Email,
-                };
-                var token = await _userManager.GenerateEmailConfirmationTokenAsync(userIdentity);
-                var result = await _emailService.SendEmailConfirmationAsync(user, token);
-                if (!result.Result)
-                {
-                    return BadRequest(new ValidationResult { Result = false, Message = "Bestätigungs-E-Mail konnte nicht gesendet werden" });
+                    // Send confirmation email
+                    UserIdentity userIdentity = new UserIdentity()
+                    {
+                        Id = user.Id.ToString(),
+                        UserName = user.UserName,
+                        Email = user.Email,
+                    };
+                    var token = await _userManager.GenerateEmailConfirmationTokenAsync(userIdentity);
+                    var result = await _emailService.SendEmailConfirmationAsync(user, token);
+                    if (!result.Result)
+                    {
+                        return BadRequest(new ValidationResult { Result = false, Message = "Bestätigungs-E-Mail konnte nicht gesendet werden" });
+                    }
+                    else
+                    {
+                        return Ok(new ValidationResult { Result = true, Message = "Benutzer erfolgreich erstellt. Bitte prüf mal Ihre Email um Ihre Konto zu bestätigen" });
+                    }
                 }
                 else
                 {
-                    return Ok(new ValidationResult { Result = true, Message = "Benutzer erfolgreich erstellt. Bitte prüf mal Ihre Email um Ihre Konto zu bestätigen" });
+                    return BadRequest(new ValidationResult { Result = false, Message = "Fehler beim Erstellen des Benutzers" });
                 }
             }
             catch (DbUpdateException)
             {
-                return StatusCode(500, new ValidationResult{ Result = false, Message = "Internal server error" });
+                return StatusCode(500, new ValidationResult { Result = false, Message = "Internal server error" });
             }
         }
         [HttpPut("update")]
@@ -212,27 +223,42 @@ namespace WAHShopBackend.Controllers
                 return NotFound(new ValidationResult { Result = false, Message = "User not found" });
             }
 
-            bool isOldPasswordCorrect = BCrypt.Net.BCrypt.Verify(updateProfile.OldPassword, existingUser.Password);
-            if (!isOldPasswordCorrect)
-            {
-                return BadRequest(new ValidationResult { Result = false, Message = "Das alte Passwort ist nicht korrekt." });
-            }
-
-            // ✅ تأكد أن الباسورد الجديد مختلف عن القديم
-            bool isSameAsOld = BCrypt.Net.BCrypt.Verify(updateProfile.NewPassword, existingUser.Password);
-            if (isSameAsOld)
-            {
-                return BadRequest(new ValidationResult { Result = false, Message = "Das neue Passwort darf nicht gleich dem alten sein." });
-            }
             try
-            {             
-                // ✅ تحديث الباسورد الجديد بعد التشفير
-                existingUser.Password = BCrypt.Net.BCrypt.HashPassword(updateProfile.NewPassword);
+            {   // if update password
+                if (updateProfile.UpdateType == UpdateTypeEnum.Password)
+                {
+                    bool isOldPasswordCorrect = BCrypt.Net.BCrypt.Verify(updateProfile.OldPassword, existingUser.Password);
+                    if (!isOldPasswordCorrect)
+                    {
+                        return BadRequest(new ValidationResult { Result = false, Message = "Das alte Passwort ist nicht korrekt." });
+                    }
+
+                    // ✅ تأكد أن الباسورد الجديد مختلف عن القديم
+                    bool isSameAsOld = BCrypt.Net.BCrypt.Verify(updateProfile.NewPassword, existingUser.Password);
+                    if (isSameAsOld)
+                    {
+                        return BadRequest(new ValidationResult { Result = false, Message = "Das neue Passwort darf nicht gleich dem alten sein." });
+                    }
+                    // ✅ تحديث الباسورد الجديد بعد التشفير
+                    existingUser.Password = BCrypt.Net.BCrypt.HashPassword(updateProfile.NewPassword);
+                }
+                else if (updateProfile.UpdateType == UpdateTypeEnum.Birthday)
+                {
+                    existingUser.BirthDate = updateProfile.BirthDate;
+                }
+
 
                 _context.Users.Update(existingUser);
-                await _context.SaveChangesAsync();
+                var result = await _context.SaveChangesAsync();
 
-                return Ok(new ValidationResult { Result = true, Message = "Passwort wurde erfolgreich geändert." });
+                if (result > 0)
+                {
+                    return GetToken(existingUser);
+                }
+                else
+                { 
+                    return BadRequest(new ValidationResult { Result = false, Message = "könnte nicht in die Databank updaten" }); 
+                }
             }
             catch (DbUpdateException)
             {
@@ -243,12 +269,14 @@ namespace WAHShopBackend.Controllers
         public async Task<IActionResult> AddGuest(User userGuest)
         {
             // if user name exist
-            if (await _context.Users.AnyAsync(u => u.UserName.ToLower() == userGuest.UserName.ToLower()))
+           /* var checkUsername = await _context.Users.AnyAsync(u => u.UserName.ToLower() == userGuest.UserName.ToLower() && u.IsGuest==false);
+            if (checkUsername)
             {
                 return BadRequest(new ValidationResult { Result = false, Message = "Username already exists" });
-            }
+            }*/
             // if user email exist
-            if (await _context.Users.AnyAsync(u => u.Email.ToLower() == userGuest.Email.ToLower()))
+            var checkEmail = await _context.Users.AnyAsync(u => u.Email.ToLower() == userGuest.Email.ToLower() && u.IsGuest == false);
+            if (checkEmail)
             {
                 return BadRequest(new ValidationResult { Result = false, Message = "Email already exists" });
             }
@@ -266,8 +294,10 @@ namespace WAHShopBackend.Controllers
                     Password = BCrypt.Net.BCrypt.HashPassword(userGuest.Password),
                     Email = userGuest.Email,
                     Role = "user",
-                    BirthDate = DateTime.Now.ToString("yyyy.MM.dd"),
-                    IsGuest = true
+                    BirthDate = userGuest.BirthDate,
+                    IsGuest = true,
+                    IsAktiv = false, // Guest accounts are not active by default
+                    SignupProvider = "Guest"
                 };
                 _context.Users.Add(guest);
                 await _context.SaveChangesAsync();
@@ -313,6 +343,61 @@ namespace WAHShopBackend.Controllers
             {
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
+        }
+        [HttpGet("checkPassword")]
+        public async Task<IActionResult> CheckPassword(int userId, string password)
+        {
+            try
+            {
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null)
+                {
+                    return NotFound(new ValidationResult { Result = false, Message = "Benutzer nicht gefunden" });
+                }
+                bool isPasswordValid = BCrypt.Net.BCrypt.Verify(password, user.Password);
+                if (isPasswordValid)
+                {
+                    return Ok(new ValidationResult { Result = true, Message = "Passwort ist korrekt" });
+                }
+                else
+                {
+                    return BadRequest(new ValidationResult { Result = false, Message = "Passwort ist falsch" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
+            }
+        }
+
+        [HttpDelete("accountDelete/{userId}")]
+        public async Task<IActionResult> AccountDelete(int userId)
+        {
+            var users = _context.Users.Where(a => a.Id == userId);
+
+            // check if user exist 
+            if (users == null || !users.Any())
+            {
+                return NotFound(new ValidationResult { Result = false, Message = "User not found" });
+            }
+            _context.Users.RemoveRange(users);
+
+
+
+            var address = _context.Addresses.Where(a => a.UserId == userId);
+            _context.Addresses.RemoveRange(address);
+
+            var orders = _context.Orders.Where(a => a.UserId == userId);
+            _context.Orders.RemoveRange(orders);
+
+            
+
+            var result = await _context.SaveChangesAsync();
+            if (result >= 0)
+                return Ok(new ValidationResult { Result = true, Message = $"User deleted successfully." });
+
+            else
+                return BadRequest(new ValidationResult { Result = false, Message = "Fehler beim Löschen des Benutzers. Bitte versuchen Sie es später erneut." });
         }
     }
 }

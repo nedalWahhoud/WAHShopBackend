@@ -26,5 +26,6 @@ namespace WAHShopBackend.Models
         public ShippingProvider? ShippingProviders { get; set; }
         public double ShippingCost { get; set; }
         public string? TrackingNumber { get; set; }
+        public bool IsUserCreated { get; set; }
     }
 }

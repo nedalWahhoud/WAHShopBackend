@@ -26,5 +26,6 @@ namespace WAHShopBackend.Models
         public TaxRate? TaxRate { get; set; }
         public int? ProductGroupID { get; set; }
         public GroupProducts? ProductGroup { get; set; }
+        public bool IsShippable { get; set; } 
     }
 }

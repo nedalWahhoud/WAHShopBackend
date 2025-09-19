@@ -71,15 +71,15 @@ namespace WAHShopBackend.Controllers
             }
         }
         [HttpGet("getProductsByCategoryId/{categoryId}")]
-        public async Task<IActionResult> GetProductsByCategoryId(int categoryId, [FromQuery] GetItems<Product> getItems, [FromQuery] List<int>? excludeProductsIds = null)
+        public async Task<IActionResult> GetProductsByCategoryId(int categoryId, [FromQuery] GetItems<Product> getItems, [FromQuery] List<int>? excludeProductsIds = null, [FromQuery] bool IsAdmin = false)
         {
             try
             {
                 excludeProductsIds = excludeProductsIds ?? [];
 
                 var query = _context.Products
-                    .Where(p => p.CategoryId == categoryId && !excludeProductsIds.Contains(p.Id) && 
-                    p.Quantity > 0)
+                    .Where(p => p.CategoryId == categoryId && !excludeProductsIds.Contains(p.Id) &&
+                     (!IsAdmin ? p.Quantity > 0 : true))
                     .Include(p => p.Category)
                     .Include(p => p.Manufacturer)
                     .Include(p => p.TaxRate)
