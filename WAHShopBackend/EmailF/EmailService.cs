@@ -61,7 +61,7 @@ namespace WAHShopBackend.EmailF
                 emailRequest.Subject = "Bestellbestätigung - Bestellnummer: " + order.Id;
 
                 var productListHtml = string.Join("", order.OrderItems.Select(item =>
-                                                  $"<li>{item.Product?.Name_de} x {item.Quantity} – {item.Product!.SalePrice * item.Quantity:C}</li>"));
+                                                  $"<li>{item.Product?.Name_de} x {item.Quantity} – {item.UnitPrice * item.Quantity:C}</li>"));
 
 
 
@@ -86,8 +86,8 @@ namespace WAHShopBackend.EmailF
                     double totalPrice = 0;
                     if (order.ShippingProviders != null && order.ShippingProviderId > 0)
                     {
-                        emailRequest.Body += "Versandkosten: <strong>" + order.ShippingCost.ToString("C") + "</strong><br>";
-                        totalPrice = order.TotalPrice + order.ShippingCost;
+                        emailRequest.Body += "Versandkosten: <strong>" + order.ShippingProviders.PublicShippingCost.ToString("C") + "</strong><br>";
+                        totalPrice = order.TotalPrice + order.ShippingProviders.PublicShippingCost;
                     }
                     else
                         totalPrice = order.TotalPrice;
@@ -107,7 +107,6 @@ namespace WAHShopBackend.EmailF
                         }
                     }
 
-                    double originalCateoryPrice = categoryitemsPrice / (1 - (order.DiscountCategory.DiscountPercentage / 100.0));
                     double categoryDiscountValue = categoryitemsPrice * (order.DiscountCategory.DiscountPercentage / 100.0);
 
                     double originalTotal = order.TotalPrice + categoryDiscountValue;
@@ -130,8 +129,8 @@ namespace WAHShopBackend.EmailF
                     double totalPrice = 0;
                     if (order.ShippingProviders != null && order.ShippingProviderId > 0)
                     {
-                        emailRequest.Body += "Versandkosten: <strong>" + order.ShippingCost.ToString("C") + "</strong><br>";
-                        totalPrice = order.TotalPrice + order.ShippingCost;
+                        emailRequest.Body += "Versandkosten: <strong>" + order.ShippingProviders.PublicShippingCost.ToString("C") + "</strong><br>";
+                        totalPrice = order.TotalPrice + order.ShippingProviders.PublicShippingCost;
                     }
                     else
                         totalPrice = order.TotalPrice;
@@ -144,9 +143,9 @@ namespace WAHShopBackend.EmailF
                     double totalPrice = 0;
                     if (order.ShippingProviders != null && order.ShippingProviderId > 0)
                     {
-                        emailRequest.Body += "Versandkosten: <strong>" + order.ShippingCost.ToString("C") + "</strong><br>";
+                        emailRequest.Body += "Versandkosten: <strong>" + order.ShippingProviders.PublicShippingCost.ToString("C") + "</strong><br>";
                         emailRequest.Body += "Preis: <strong>" + order.TotalPrice.ToString("C") + "</strong><br><br>";
-                        totalPrice = order.TotalPrice + order.ShippingCost;
+                        totalPrice = order.TotalPrice + order.ShippingProviders.PublicShippingCost;
                     }
                     else
                         totalPrice = order.TotalPrice;
