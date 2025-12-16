@@ -31,14 +31,12 @@ namespace WAHShopBackend.Controllers
                 {
                     // es konnte dass bei login die UserName oder Email verwendet werden kann
                     var user = await _context.Users.FirstOrDefaultAsync(u =>
-                       u.UserName!.ToLower() == loginModel.UserName!.ToLower()
-                       || u.Email!.ToLower() == loginModel.Email!.ToLower()
-                       || u.Email!.ToLower() == loginModel.UserName!.ToLower() 
+                        u.Email!.ToLower() == loginModel.Email!.ToLower()
                        && u.IsGuest == false && u.SignupProvider == "Manual" && u.IsAktiv == true);
 
                     if (user == null || !BCrypt.Net.BCrypt.Verify(loginModel!.Password.Trim(), user!.Password!.Trim()) || user.IsGuest == true)
                     {
-                        return Unauthorized(new ValidationResult { Result = false, Message = "Invalid credentials" });
+                        return Unauthorized(new ValidationResult { Result = false, Message = "Falsches Passwort oder E-Mail." });
                     }
                     if (user.IsAktiv == false)
                     {
@@ -52,9 +50,7 @@ namespace WAHShopBackend.Controllers
                     // Google login
                     // es konnte dass bei login die UserName oder Email verwendet werden kann
                     var user = await _context.Users.FirstOrDefaultAsync(u =>
-                       u.UserName!.ToLower() == loginModel.UserName!.ToLower()
-                       || u.Email!.ToLower() == loginModel.Email!.ToLower()
-                       || u.Email!.ToLower() == loginModel.UserName!.ToLower()
+                        u.Email!.ToLower() == loginModel.Email!.ToLower()
                        && u.IsGuest == false && u.SignupProvider == "Google" && u.IsAktiv == true);
 
                     // wenn der User nicht existiert, dann signup ohne Passwort und bestätigungslink da es ein Google Login ist
@@ -94,9 +90,9 @@ namespace WAHShopBackend.Controllers
                     return BadRequest(new ValidationResult { Result = false, Message = "Ungültiger Anmeldeanbieter" });
                 }
             }
-            catch
+            catch(Exception ex)
             {
-                return StatusCode(500, new ValidationResult { Result = false, Message = "Internal server error" });
+                return StatusCode(500, new ValidationResult { Result = false, Message = "Internal server error " + ex.Message });
             }
         }
         private ObjectResult GetToken(User user)
@@ -155,7 +151,33 @@ namespace WAHShopBackend.Controllers
                 var checkEmail = await _context.Users.AnyAsync(u => u.Email.ToLower() == signupModel.Email.ToLower() && u.IsGuest == false);
                 if (checkEmail)
                 {
-                    return BadRequest(new ValidationResult { Result = false, Message = "Email bereits existiert" });
+                    // check wenn die user inaktiv ist dann sende die bestätigungs email nochmal
+                   var user1 = await _context.Users.FirstOrDefaultAsync(u =>
+                   u.Email!.ToLower() == signupModel.Email!.ToLower()
+                   && u.IsGuest == false && u.SignupProvider == "Manual" && u.IsAktiv == false);
+                    if (user1 != null)
+                    {
+                        // Send confirmation email
+                        UserIdentity userIdentity = new UserIdentity()
+                        {
+                            Id = user1.Id.ToString(),
+                            UserName = user1.UserName,
+                            Email = user1.Email,
+                        };
+                        var token = await _userManager.GenerateEmailConfirmationTokenAsync(userIdentity);
+                        var result = await _emailService.SendEmailConfirmationAsync(user1, token);
+                        if (!result.Result)
+                        {
+                            return BadRequest(new ValidationResult { Result = false, Message = "Bestätigungs-E-Mail konnte nicht gesendet werden" });
+                        }
+                        else
+                        {
+                            return Ok(new ValidationResult { Result = true, Message = "SignupSuccessMessageAgain" });
+                        }
+                    }
+
+
+                return BadRequest(new ValidationResult { Result = false, Message = "Email bereits existiert" });
                 }
                 // password check
                 if (signupModel.Password != signupModel.PasswordAgain)
@@ -197,7 +219,7 @@ namespace WAHShopBackend.Controllers
                     }
                     else
                     {
-                        return Ok(new ValidationResult { Result = true, Message = "Benutzer erfolgreich erstellt. Bitte prüf mal Ihre Email um Ihre Konto zu bestätigen" });
+                        return Ok(new ValidationResult { Result = true, Message = "SignupSuccessMessage" });
                     }
                 }
                 else
@@ -369,7 +391,23 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
-
+        [HttpGet("checkAdminStatus/{id}")]
+        public async Task<IActionResult> CheckAdminStatus(int id)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null)
+            {
+                return NotFound(new ValidationResult { Result = false, Message = "nicht gefunden" });
+            }
+            if (user.Role == "admin")
+            {
+                return Ok(new ValidationResult { Result = true, Message = "Benutzer ist ein Admin" });
+            }
+            else
+            {
+                return BadRequest(new ValidationResult { Result = false, Message = "kein Admin" });
+            }
+        }
         [HttpDelete("accountDelete/{userId}")]
         public async Task<IActionResult> AccountDelete(int userId)
         {

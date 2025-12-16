@@ -5,7 +5,7 @@ namespace WAHShopBackend.ProductP
     public class ProductService
     {
 
-        public static bool IsValidProduct(Product newProduct, out string errorMessage)
+        public bool IsValidProduct(Product newProduct, out string errorMessage)
         {
             if (string.IsNullOrWhiteSpace(newProduct.Name_de))
             {
@@ -70,10 +70,14 @@ namespace WAHShopBackend.ProductP
                 errorMessage = "Expiration date must be greater than current date.";
                 return false;
             }
-            if (newProduct.Image == null || (newProduct.Image != null && newProduct.Image.Length <= 0))
+            foreach (var item in newProduct.ProductImages)
             {
-                errorMessage = "Image is required.";
-                return false;
+
+                if (item.ImageBytes == null || (item.ImageBytes != null && item.ImageBytes.Length <= 0))
+                {
+                    errorMessage = "Image is required.";
+                    return false;
+                }
             }
 
             errorMessage = string.Empty;

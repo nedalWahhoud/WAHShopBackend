@@ -4,6 +4,7 @@ using WAHShopBackend.Models;
 using WAHShopBackend.Data;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Identity;
+using System.Globalization;
 
 namespace WAHShopBackend.EmailF
 {
@@ -43,14 +44,17 @@ namespace WAHShopBackend.EmailF
 
         public async Task<bool> OrderConfirmation(Order order)
         {
-            if (order == null || order.UserId <= 0 || order.OrderItems == null || !order.OrderItems.Any())
+            if (order == null || order.UserId <= 0 || order.OrderItems == null || order.OrderItems.Count == 0)
             {
                 return false; // Invalid order data
             }
 
             try
             {
-                EmailRequest emailRequest = new ();
+                // Set culture to German (Germany)
+                var culture = new CultureInfo("de-DE"); 
+
+                EmailRequest emailRequest = new();
 
                 if (order.User == null || string.IsNullOrWhiteSpace(order.User.Email))
                 {
@@ -61,7 +65,7 @@ namespace WAHShopBackend.EmailF
                 emailRequest.Subject = "Bestellbestätigung - Bestellnummer: " + order.Id;
 
                 var productListHtml = string.Join("", order.OrderItems.Select(item =>
-                                                  $"<li>{item.Product?.Name_de} x {item.Quantity} – {item.UnitPrice * item.Quantity:C}</li>"));
+                                                  $"<li>{item.Product?.Name_de} {item.UnitPrice.ToString("C",culture)} x {item.Quantity} – {(item.UnitPrice * item.Quantity).ToString("C",culture)}</li>"));
 
 
 
@@ -70,6 +74,17 @@ namespace WAHShopBackend.EmailF
                                        "Bestellungsnummer: <strong>" + order.Id + "</strong><br>" +
                                        "Bestelldatum: <strong>" + order.OrderDate.ToString("dd.MM.yyyy") + "</strong><br>";
 
+                // Gesamtpreis mit oder ohne versandkosten
+                double totalPrice = 0;
+                if (order.ShippingProviders != null && order.ShippingProviderId > 0)
+                {
+                    totalPrice = order.TotalPrice + order.ShippingProviders.PublicShippingCost;
+                }
+                else
+                {
+                    totalPrice = order.TotalPrice;
+                }
+
                 // discount code
                 if (order.DiscountCodeId != null && order.DiscountCode != null)
                 {
@@ -77,22 +92,17 @@ namespace WAHShopBackend.EmailF
                     double discountValue = originalTotal - order.TotalPrice;
 
                     emailRequest.Body +=
-                        "Preis vor Rabatt: <strong>" + originalTotal.ToString("C") + "</strong><br>" +
-                        "Rabattbetrag: <strong>" + discountValue.ToString("C") + "</strong><br>" +
+                        "Preis vor Rabatt: <strong>" + originalTotal.ToString("C", culture) + "</strong><br>" +
+                        "Rabattbetrag: <strong>" + discountValue.ToString("C", culture) + "</strong><br>" +
                         $"Rabattprozentsatz : <strong>{order.DiscountCode?.DiscountPercentage ?? 0}%</strong><br>" +
-                        "Preis nach Rabatt: <strong>" + order.TotalPrice.ToString("C") + "</strong><br>";
+                        "Preis nach Rabatt: <strong>" + order.TotalPrice.ToString("C", culture) + "</strong><br>";
 
                     // versandkosten
-                    double totalPrice = 0;
                     if (order.ShippingProviders != null && order.ShippingProviderId > 0)
                     {
-                        emailRequest.Body += "Versandkosten: <strong>" + order.ShippingProviders.PublicShippingCost.ToString("C") + "</strong><br>";
-                        totalPrice = order.TotalPrice + order.ShippingProviders.PublicShippingCost;
+                        emailRequest.Body += "Versandkosten: <strong>" + order.ShippingProviders.PublicShippingCost.ToString("C", culture) + "</strong><br>";
                     }
-                    else
-                        totalPrice = order.TotalPrice;
-
-                    emailRequest.Body += "Gesamtpreis nach Rabatt: <strong>" + totalPrice.ToString("C") + "</strong><br>";
+                    emailRequest.Body += "Gesamtpreis nach Rabatt: <strong>" + totalPrice.ToString("C", culture) + "</strong><br>";
                 }
                 // discount category
                 else if (order.DiscountCategoryId != null && order.DiscountCategory != null)
@@ -119,41 +129,30 @@ namespace WAHShopBackend.EmailF
                     }
 
                     emailRequest.Body +=
-                        "Preis vor Rabatt: <strong>" + originalTotal.ToString("C") + "</strong><br>" +
+                        "Preis vor Rabatt: <strong>" + originalTotal.ToString("C", culture) + "</strong><br>" +
                         "Rabattkategorie: <strong>" + categoryName + "</strong><br>" +
-                        "Rabattbetrag: <strong>" + categoryDiscountValue.ToString("C") + "</strong><br>" +
+                        "Rabattbetrag: <strong>" + categoryDiscountValue.ToString("C", culture) + "</strong><br>" +
                         $"Rabattprozentsatz : <strong>{order.DiscountCategory?.DiscountPercentage ?? 0}%</strong><br>" +
-                        "Preis nach Rabatt: <strong>" + order.TotalPrice.ToString("C") + "</strong><br>";
+                        "Preis nach Rabatt: <strong>" + order.TotalPrice.ToString("C", culture) + "</strong><br>";
 
                     // versandkosten
-                    double totalPrice = 0;
                     if (order.ShippingProviders != null && order.ShippingProviderId > 0)
                     {
-                        emailRequest.Body += "Versandkosten: <strong>" + order.ShippingProviders.PublicShippingCost.ToString("C") + "</strong><br>";
-                        totalPrice = order.TotalPrice + order.ShippingProviders.PublicShippingCost;
+                        emailRequest.Body += "Versandkosten: <strong>" + order.ShippingProviders.PublicShippingCost.ToString("C", culture) + "</strong><br>";
                     }
-                    else
-                        totalPrice = order.TotalPrice;
 
-                    emailRequest.Body += "Gesamtpreis nach Rabatt: <strong>" + totalPrice.ToString("C") + "</strong><br>";
+                    emailRequest.Body += "Gesamtpreis nach Rabatt: <strong>" + totalPrice.ToString("C", culture) + "</strong><br>";
                 }
                 else
                 {
                     // versandkosten
-                    double totalPrice = 0;
                     if (order.ShippingProviders != null && order.ShippingProviderId > 0)
                     {
-                        emailRequest.Body += "Versandkosten: <strong>" + order.ShippingProviders.PublicShippingCost.ToString("C") + "</strong><br>";
-                        emailRequest.Body += "Preis: <strong>" + order.TotalPrice.ToString("C") + "</strong><br><br>";
-                        totalPrice = order.TotalPrice + order.ShippingProviders.PublicShippingCost;
+                        emailRequest.Body += "Versandkosten: <strong>" + order.ShippingProviders.PublicShippingCost.ToString("C", culture) + "</strong><br>";
+                        emailRequest.Body += "Preis: <strong>" + order.TotalPrice.ToString("C", culture) + "</strong><br><br>";
                     }
-                    else
-                        totalPrice = order.TotalPrice;
-
-                    emailRequest.Body += "Gesamtpreis: <strong>" + totalPrice.ToString("C") + "</strong><br><br>";
+                    emailRequest.Body += "Gesamtpreis: <strong>" + totalPrice.ToString("C", culture) + "</strong><br><br>";
                 }
-
-
 
                 // orderitems
                 emailRequest.Body += "<strong>Bestellte Produkte:</strong><br>" +
@@ -179,7 +178,7 @@ namespace WAHShopBackend.EmailF
                                              $"IBAN: {order.PaymentMethod.BankTransferDetails.IBAN}<br>" +
                                              $"BIC: {order.PaymentMethod.BankTransferDetails.BIC}<br>" +
                                              $"Bankname: {order.PaymentMethod.BankTransferDetails.BankName}<br>" +
-                                             $"Betrag: <strong>{order.TotalPrice:C} </strong><br>" +
+                                             $"Betrag: <strong>{totalPrice.ToString("C", culture)} </strong><br>" +
                                              $"- Bitte geben Sie bei der Überweisung Ihre Bestellnummer <strong> ({order.Id}) </strong> als Verwendungszweck an.<br>" +
                                              "- Ihre Bestellung wird nach Zahlungseingang bearbeitet und versendet.<br>" +
                                              "- Die Zahlung sollte innerhalb von <strong> 5 Werktagen </strong> erfolgen, um Verzögerungen zu vermeiden.<br><br>";

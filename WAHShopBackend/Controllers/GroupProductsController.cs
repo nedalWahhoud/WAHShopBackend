@@ -26,6 +26,7 @@ namespace WAHShopBackend.Controllers
                 var products = await _context.Products
                     .Where(p => p.ProductGroupID == groupProductsId && !excludeProductsIds.Contains(p.Id) &&
                     p.Quantity > 0)
+                    .Include(p => p.ProductImages)
                     .ToListAsync();
                 if (products == null || products.Count == 0)
                 {

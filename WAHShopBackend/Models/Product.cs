@@ -1,5 +1,5 @@
-﻿using System.ComponentModel;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace WAHShopBackend.Models
 {
@@ -19,7 +19,7 @@ namespace WAHShopBackend.Models
         public int ManufacturerId { get; set; }
         public Manufacturers? Manufacturer { get; set; }
         public int UserId { get; set; }
-        public byte[]? Image { get; set; }
+        public ICollection<ProductImages> ProductImages { get; set; } = [];
         public string? Name_ar { get; set; }
         public string? Description_ar { get; set; }
         public int TaxRateId { get; set; }

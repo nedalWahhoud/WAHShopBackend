@@ -2,15 +2,18 @@
 using Microsoft.EntityFrameworkCore;
 using WAHShopBackend.Data;
 using WAHShopBackend.Models;
+using WAHShopBackend.ProductImagesF;
 using WAHShopBackend.ProductP;
 
 namespace WAHShopBackend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class ProductsController(MyDbContext context) : ControllerBase
+    public class ProductsController(MyDbContext context,ProductService productService, ProductImagesService productImagesService) : ControllerBase
     {
         private readonly MyDbContext _context = context;
+        private readonly ProductImagesService _productImagesService = productImagesService;
+        private readonly ProductService _productService = productService;
 
         [HttpPost("addProduct")]
         public async Task<IActionResult> AddProduct([FromBody] Product newProduct)
@@ -21,13 +24,44 @@ namespace WAHShopBackend.Controllers
             try
             {
                 string Message = string.Empty;
-                bool isValid = ProductService.IsValidProduct(newProduct!, out Message);
+                bool isValid = _productService.IsValidProduct(newProduct!, out Message);
                 if (!isValid)
                     return BadRequest(new ValidationResult { Result = false, Message = Message });
 
                 _context.Products.Add(newProduct);
                 int result = await _context.SaveChangesAsync();
-                return Ok(new ValidationResult { Result = result > 0, Message = $"Id:{newProduct.Id}" });
+                if (result > 0)
+                {
+                    if (newProduct.ProductImages != null && newProduct.ProductImages.Count > 0)
+                    {
+                        var resultImage = _productImagesService.AddImage(newProduct);
+                        if (resultImage.Result == true)
+                        {
+                            var result1 = await _context.SaveChangesAsync();
+                            if (result1 == 0)
+                            {
+                                await DeleteProduct(newProduct.Id);
+                                _productImagesService.DeleteImage(newProduct.Id, true);
+                                return StatusCode(500, new ValidationResult { Result = false, Message = "Das Produkt wurde hinzugefügt (aber wieder gelöscht), das Bild konnte nicht in der Datenbank gespeichert werden." });
+                            }
+                            return Ok(new ValidationResult { Result = true, Message = $"Id:{newProduct.Id}" });
+                        }
+                        else
+                        {
+                            await DeleteProduct(newProduct.Id);
+                            return StatusCode(500, new ValidationResult { Result = false, Message = "Das Produkt wurde hinzugefügt (aber wieder gelöscht), das Bild konnte nicht gespeichert werden: " + resultImage.Message });
+                        }
+                    }
+                    else
+                    {
+                        await DeleteProduct(newProduct.Id);
+                        return StatusCode(500,new ValidationResult { Result = false, Message = $"ProductImages array ist null" });
+                    }
+                }
+                else
+                {
+                    return StatusCode(500, new ValidationResult { Result = false, Message = "Das Produkt konnte nicht hinzugefügt werden." });
+                }
             }
             catch (Exception ex)
             {
@@ -41,6 +75,7 @@ namespace WAHShopBackend.Controllers
             try
             {
                 var product = await _context.Products
+                    .Include(p => p.ProductImages)
                     .Include(p=>p.ProductGroup)
                     .Where(p => ids.Contains(p.Id))
                     .ToListAsync();
@@ -59,7 +94,12 @@ namespace WAHShopBackend.Controllers
         {
             try
             {
-                var product = await _context.Products.Include(p => p.ProductGroup)
+                var product = await _context.Products
+                    .Include(p => p.Category)
+                    .Include(p => p.Manufacturer)
+                    .Include(p => p.TaxRate)
+                    .Include(p => p.ProductGroup)
+                    .Include(p => p.ProductImages)
                     .FirstOrDefaultAsync(p => p.Id == id);
                 if (product != null)
                     return Ok(product);
@@ -89,6 +129,7 @@ namespace WAHShopBackend.Controllers
                     .Include(p => p.Manufacturer)
                     .Include(p => p.TaxRate)
                     .Include(p => p.ProductGroup)
+                    .Include(p => p.ProductImages)
                     .OrderByDescending(p => p.Id)
                     .Skip(_getItems.CurrentPage * _getItems.PageSize)
                     .Take(_getItems.PageSize)
@@ -156,15 +197,37 @@ namespace WAHShopBackend.Controllers
         {
             try
             {
-                var existingProduct = await _context.Products.FindAsync(editProduct.Id);
+                var existingProduct = await _context.Products
+                    .Include(p => p.ProductImages)
+                    .FirstOrDefaultAsync(p => p.Id == editProduct.Id);
                 if (existingProduct != null)
                 {
+                    if (editProduct.ProductImages != null)
+                    {
+                        var resultImage = _productImagesService.EditImage(existingProduct.ProductImages,editProduct.ProductImages);
+                        if (resultImage.Result == false)
+                        {
+                            return StatusCode(500, new ValidationResult { Result = false, Message = "Bildaktualisierung fehlgeschlagen: " + resultImage.Message });
+                        }
+                    }
+
+
+                    //
                     _context.Entry(existingProduct).CurrentValues.SetValues(editProduct);
+                    _context.Entry(existingProduct).State = EntityState.Modified;
                     int result = await _context.SaveChangesAsync();
-                    return Ok(new ValidationResult { Result = result > 0, Message = "Product updated successfully" });
+                    if (result > 0)
+                    {
+                        return Ok(new ValidationResult { Result = true, Message = "Produkt erfolgreich aktualisiert" });
+                    }
+                    else
+                    {
+                        return StatusCode(500, new ValidationResult { Result = false, Message = "Produktaktualisierung fehlgeschlagen" });
+                    }
                 }
                 else
-                    return StatusCode(500, new ValidationResult { Result = false, Message = "Product not found" });
+                    return StatusCode(500, new ValidationResult { Result = false, Message = "Product nicht gefunden" });
+
             }
             catch (Exception ex)
             {
@@ -181,7 +244,17 @@ namespace WAHShopBackend.Controllers
                 {
                     _context.Products.Remove(existingProduct);
                     int result = await _context.SaveChangesAsync();
-                    return Ok(new ValidationResult { Result = result > 0, Message = "Product deleted successfully" });
+                    if(result > 0)
+                    {
+                        _productImagesService.DeleteImage(id, true);
+
+                        return Ok(new ValidationResult { Result = result > 0, Message = "Product deleted successfully" });
+                    }
+                    else
+                    {
+                        return StatusCode(500, new ValidationResult { Result = false, Message = "Failed to delete product" });
+                    }
+
                 }
                 else
                     return StatusCode(500, new ValidationResult { Result = false, Message = "Product not found" });
@@ -191,6 +264,5 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
-      
     }
 }

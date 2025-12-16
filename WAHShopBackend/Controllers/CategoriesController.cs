@@ -24,9 +24,9 @@ namespace WAHShopBackend.Controllers
 
                 return Ok(getItems);
             }
-            catch
+            catch(Exception ex)
             {
-                return StatusCode(500, new ValidationResult { Result = false, Message = "Internal server error" });
+                return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
         [HttpGet("getCategoryById/{categoryId}")]
@@ -70,6 +70,7 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
+        private readonly Random random = new();
         [HttpGet("getProductsByCategoryId/{categoryId}")]
         public async Task<IActionResult> GetProductsByCategoryId(int categoryId, [FromQuery] GetItems<Product> getItems, [FromQuery] List<int>? excludeProductsIds = null, [FromQuery] bool IsAdmin = false)
         {
@@ -85,7 +86,8 @@ namespace WAHShopBackend.Controllers
                     .Include(p => p.Manufacturer)
                     .Include(p => p.TaxRate)
                     .Include(p => p.ProductGroup)
-                    .OrderBy(p => Guid.NewGuid())
+                    .Include(p => p.ProductImages)
+                    .OrderBy(p => EF.Functions.Random())
                     .Take(getItems.PageSize);
 
                 var products = await query

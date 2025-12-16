@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using WAHShopBackend.Data;
 using WAHShopBackend.EmailF;
 using WAHShopBackend.Models;
@@ -8,10 +9,11 @@ namespace WAHShopBackend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class OrdersController(MyDbContext context, EmailService emailService) : ControllerBase
+    public class OrdersController(MyDbContext context, EmailService emailService, IOptions<ProjectInfo> ProjectInfo) : ControllerBase
     {
         private readonly MyDbContext _context = context;
         private readonly EmailService _emailService = emailService;
+        private readonly IOptions<ProjectInfo> _projectInfo = ProjectInfo;
         [HttpPost("addOrder")]
         public async Task<IActionResult> AddOrder([FromBody] Order order)
         {
@@ -75,7 +77,13 @@ namespace WAHShopBackend.Controllers
 
                             if (savedOrder != null)
                             {
+                                // send order confirmation email
                                 _ = _emailService.OrderConfirmation(savedOrder);
+                                // schicken  eine Benachrichtigung an den Administrator
+                                string subject = $"Neue Bestellung eingegangen - Bestellnummer {savedOrder.Id}";
+                                string body = $"Eine neue Bestellung wurde aufgegeben. Bestellnummer: {savedOrder.Id}<br>"+
+                                    $"BezahlungsMethod: <strong>{savedOrder.PaymentMethod?.Description_de ?? "Fehler bei PaymentMethod Abholung"}</strong>";
+                                _ = _emailService.SendEmailAsync(_projectInfo.Value.Email!, subject, body);
                             }
                         }
                         // check if discount code is set, if so, update the discount code usage
@@ -127,7 +135,7 @@ namespace WAHShopBackend.Controllers
                    .Include(o => o.Status)
                    .Include(o => o.Address)
                    .Include(o => o.DiscountCode)
-                   .Include(o => o.DiscountCategory).ThenInclude(o => o.Category)
+                   .Include(o => o.DiscountCategory).ThenInclude(o => o!.Category)
                    .Include(o => o.ShippingProviders)
                    .ToListAsync();
 
@@ -136,7 +144,7 @@ namespace WAHShopBackend.Controllers
                 // , daher nehmen wir die Bestellelemente mit den Produkten einzeln in Angriff.
                 var orderItems = await _context.OrderItems
                     .Where(oi => orderIds.Contains(oi.OrderId))
-                    .Include(oi => oi.Product)
+                    .Include(oi => oi.Product).ThenInclude(p => p!.ProductImages)
                     .ToListAsync();
                 // Dann führen wir es mit den Anfragen zusammen und beschleunigen so den Prozess des Abrufens der Anfragedaten.
                 foreach (var order in orders)

@@ -6,6 +6,9 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using WAHShopBackend.EmailF;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.FileProviders;
+using WAHShopBackend.ProductP;
+using WAHShopBackend.ProductImagesF;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,12 +40,22 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key!))
         };
     });
-// dataabse 
+// dataabse
 builder.Services.AddDbContext<MyDbContext>(options =>
-   options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
+        sqlOptions =>
+        {
+            sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(10),
+                errorNumbersToAdd: null);
+        }));
 // email service 
 builder.Services.AddScoped<EmailService>();
+// product service
+builder.Services.AddScoped<ProductService>();
+// productimages service
+builder.Services.AddScoped<ProductImagesService>();
 // email token
 builder.Services.AddIdentity<UserIdentity, IdentityRole>(options =>
 {
@@ -51,7 +64,35 @@ builder.Services.AddIdentity<UserIdentity, IdentityRole>(options =>
 .AddEntityFrameworkStores<MyDbContext>()
 .AddDefaultTokenProviders();
 
+// app config
+var appConfig = builder.Configuration.GetSection("AppConfig").Get<AppConfig>() ?? new AppConfig();
+
+if (builder.Environment.IsDevelopment())
+{
+    appConfig.ShareStoragePath = Path.Combine(builder.Environment.ContentRootPath, "ShareStorage");
+}
+else
+{
+    appConfig.ShareStoragePath = @"C:\inetpub\ShareStorage";
+}
+// Speichern Sie die formatierte Version in DI.
+builder.Services.AddSingleton(appConfig);
+
 var app = builder.Build();
+
+// static files für share storage
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(appConfig.ShareStoragePath),
+    RequestPath = "/api/ShareStorage"
+});
+
+app.UseDirectoryBrowser(new DirectoryBrowserOptions
+{
+    FileProvider = new PhysicalFileProvider(appConfig.ShareStoragePath),
+    RequestPath = "/api/ShareStorage"
+});
+
 
 // Configure the HTTP request pipeline.  
 if (app.Environment.IsDevelopment())
@@ -59,6 +100,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+// server 
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 app.UseAuthentication();

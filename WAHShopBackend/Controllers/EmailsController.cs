@@ -8,11 +8,10 @@ namespace WAHShopBackend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class EmailsController(MyDbContext context, EmailService emailService, IOptions<JwtSettings> jwtSettings) : ControllerBase
+    public class EmailsController(MyDbContext context, EmailService emailService) : ControllerBase
     {
         private readonly EmailService _emailService = emailService;
         private readonly MyDbContext _context = context;
-        private readonly IOptions<JwtSettings> _jwtSettings = jwtSettings;
 
         [HttpPost("sendMail")]
         public async Task<IActionResult> SendMail([FromBody] EmailRequest emailRequest)

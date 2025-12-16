@@ -23,6 +23,7 @@ namespace WAHShopBackend.Controllers
                     .Include(p => p.Category)
                     .Include(p => p.TaxRate)
                     .Include(p => p.ProductGroup)
+                    .Include(p => p.ProductImages)
                     .Where(p => p.Quantity > 0 &&
                                 !excludeIds!.Contains(p.Id) &&
                                 (p.Name_de!.ToLower().Contains(query.ToLower()) ||
