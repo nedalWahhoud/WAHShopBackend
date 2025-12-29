@@ -9,18 +9,21 @@ using System.IdentityModel.Tokens.Jwt;
 using Microsoft.Extensions.Options;
 using WAHShopBackend.EmailF;
 using Microsoft.AspNetCore.Identity;
-using System.Reflection.Emit;
+using System.Linq.Expressions;
+
 
 namespace WAHShopBackend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class UsersController(MyDbContext context, IOptions<JwtSettings> jwtSettings, EmailService emailService, UserManager<UserIdentity> userManager) : ControllerBase
+    public class UsersController(MyDbContext context, IOptions<JwtSettings> jwtSettings, EmailService emailService, UserManager<UserIdentity> userManager,SignInManager<UserIdentity> signInManager,AppConfig appConfig) : ControllerBase
     {
         private readonly IOptions<JwtSettings> _jwtSettings = jwtSettings;
         private readonly MyDbContext _context = context;
         private readonly EmailService _emailService = emailService;
         private UserManager<UserIdentity> _userManager = userManager;
+        private readonly SignInManager<UserIdentity> _signInManager = signInManager;
+        private readonly AppConfig _appConfig = appConfig;
 
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginModel loginModel)
@@ -43,7 +46,7 @@ namespace WAHShopBackend.Controllers
                         return Unauthorized(new ValidationResult { Result = false, Message = "Benutzer ist nicht aktiv" });
                     }
 
-                    return GetToken(user);
+                    return Ok(new LoginModel { Token = GetToken(user) });
                 }
                 else if (loginModel.SignupProvider == "Google")
                 {
@@ -72,7 +75,7 @@ namespace WAHShopBackend.Controllers
                         var result = await _context.SaveChangesAsync();
                         if (result > 0)
                         {
-                            return GetToken(newUser);
+                            return Ok(new LoginModel { Token = GetToken(newUser) });
                         }
                         else
                         {
@@ -83,19 +86,19 @@ namespace WAHShopBackend.Controllers
                     {
                         return Unauthorized(new ValidationResult { Result = false, Message = "Benutzer ist nicht aktiv" });
                     }
-                    return GetToken(user);
+                    return Ok(new LoginModel{ Token = GetToken(user)});
                 }
                 else
                 {
                     return BadRequest(new ValidationResult { Result = false, Message = "Ungültiger Anmeldeanbieter" });
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return StatusCode(500, new ValidationResult { Result = false, Message = "Internal server error " + ex.Message });
             }
         }
-        private ObjectResult GetToken(User user)
+        private string GetToken(User user)
         {
             var claims = new[]
             {
@@ -109,17 +112,16 @@ namespace WAHShopBackend.Controllers
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Value.Key!));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            var token = new JwtSecurityToken(
+            var jwtToken = new JwtSecurityToken(
                 issuer: _jwtSettings.Value.Issuer,
                 audience: _jwtSettings.Value.Audience,
                 claims: claims,
                 expires: DateTime.Now.AddHours(2),
                 signingCredentials: creds
             );
-            return Ok(new
-            {
-                token = new JwtSecurityTokenHandler().WriteToken(token)
-            });
+            
+            return new JwtSecurityTokenHandler().WriteToken(jwtToken);
+
         }
         // get: api/users
         [HttpGet("{id}")]
@@ -141,12 +143,6 @@ namespace WAHShopBackend.Controllers
         {
             try
             {
-                // if user name exist
-              /*  var checkUsername = await _context.Users.AnyAsync(u => u.UserName.ToLower() == signupModel.UserName.ToLower() && u.IsGuest == false);
-                if (checkUsername)
-                {
-                    return BadRequest(new ValidationResult { Result = false, Message = "Benutzername bereits existiert" });
-                }*/
                 // if user email exist
                 var checkEmail = await _context.Users.AnyAsync(u => u.Email.ToLower() == signupModel.Email.ToLower() && u.IsGuest == false);
                 if (checkEmail)
@@ -255,13 +251,13 @@ namespace WAHShopBackend.Controllers
                         return BadRequest(new ValidationResult { Result = false, Message = "Das alte Passwort ist nicht korrekt." });
                     }
 
-                    // ✅ تأكد أن الباسورد الجديد مختلف عن القديم
+                    //  Stellen Sie sicher, dass das neue Passwort sich vom alten unterscheidet.
                     bool isSameAsOld = BCrypt.Net.BCrypt.Verify(updateProfile.NewPassword, existingUser.Password);
                     if (isSameAsOld)
                     {
                         return BadRequest(new ValidationResult { Result = false, Message = "Das neue Passwort darf nicht gleich dem alten sein." });
                     }
-                    // ✅ تحديث الباسورد الجديد بعد التشفير
+                    //  Aktualisieren Sie Ihr Passwort nach der Verschlüsselung.
                     existingUser.Password = BCrypt.Net.BCrypt.HashPassword(updateProfile.NewPassword);
                 }
                 else if (updateProfile.UpdateType == UpdateTypeEnum.Birthday)
@@ -275,7 +271,7 @@ namespace WAHShopBackend.Controllers
 
                 if (result > 0)
                 {
-                    return GetToken(existingUser);
+                    return Ok(new LoginModel() { Token = GetToken(existingUser) });
                 }
                 else
                 { 
@@ -436,6 +432,85 @@ namespace WAHShopBackend.Controllers
 
             else
                 return BadRequest(new ValidationResult { Result = false, Message = "Fehler beim Löschen des Benutzers. Bitte versuchen Sie es später erneut." });
+        }
+        //  Redirect to Google
+        [HttpGet("google-login")]
+        public IActionResult GoogleLogin([FromQuery] bool? rememberMe)
+        {
+            var redirectUrl = Url.Action("GoogleResponse", "Users");
+            var properties = _signInManager.ConfigureExternalAuthenticationProperties("Google", redirectUrl);
+
+            properties.Items["rememberMe"] = rememberMe.ToString();
+
+
+            return Challenge(properties, "Google");
+        }
+        //  Callback from Google
+        [HttpGet("google-response")]
+        public async Task<IActionResult> GoogleResponse()
+        {
+            var info = await _signInManager.GetExternalLoginInfoAsync();
+            if (info == null)
+                return BadRequest("Error loading external login info.");
+
+            var email = info.Principal.FindFirstValue(ClaimTypes.Email);
+            var userName = info.Principal.FindFirstValue(ClaimTypes.Name);
+            // get rememberMe value
+            bool rememberMe = false;
+            if (info.AuthenticationProperties?.Items != null &&
+                info.AuthenticationProperties.Items.TryGetValue("rememberMe", out var rememberMeValue))
+            {
+                _ = bool.TryParse(rememberMeValue, out rememberMe);
+            }
+
+            if (email == null || userName == null)
+            {
+                return BadRequest("Email or userName not found from Google.");
+            }
+
+            Expression<Func<User, bool>> userFilter = u =>
+                 u.Email.ToLower() == email.ToLower()
+                 && !u.IsGuest
+                 && u.IsAktiv;
+
+            var userExists = await _context.Users.AnyAsync(userFilter);
+            string jwtToken = null!;
+            if (userExists)
+            {
+                // User exist, proceed to sign in
+                var user = await _context.Users.FirstOrDefaultAsync(userFilter);
+                if (user == null)
+                    return BadRequest("Benutzer nicht gefunden.");
+
+                jwtToken = GetToken(user);
+            }
+            else
+            {
+                // wenn der User nicht existiert, dann signup ohne Passwort und bestätigungslink da es ein Google Login ist
+                User newUser = new()
+                {
+                    UserName = userName,
+                    Password = "",
+                    Email = email,
+                    BirthDate = "0",
+                    Role = "user", // Standardrolle für Google-Login
+                    IsGuest = false,
+                    IsAktiv = true, // Google login ist immer aktiv
+                    SignupProvider = "Google"
+                };
+
+                _context.Users.Add(newUser);
+                var result = await _context.SaveChangesAsync();
+                if (result > 0)
+                {
+                    jwtToken = GetToken(newUser);
+                }
+                else
+                {
+                    return BadRequest(new ValidationResult { Result = false, Message = "Fehler beim Erstellen des Benutzers" });
+                }
+            }
+            return Redirect($"{_appConfig.Domin}/auth-success?token={jwtToken}&rememberMe={rememberMe}");
         }
     }
 }

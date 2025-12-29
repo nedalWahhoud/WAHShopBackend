@@ -4,16 +4,18 @@ using Microsoft.Extensions.Options;
 using WAHShopBackend.Data;
 using WAHShopBackend.EmailF;
 using WAHShopBackend.Models;
+using WAHShopBackend.TelegramF;
 
 namespace WAHShopBackend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class OrdersController(MyDbContext context, EmailService emailService, IOptions<ProjectInfo> ProjectInfo) : ControllerBase
+    public class OrdersController(MyDbContext context, EmailService emailService, IOptions<ProjectInfo> ProjectInfo,TelegramService telegramService) : ControllerBase
     {
         private readonly MyDbContext _context = context;
         private readonly EmailService _emailService = emailService;
         private readonly IOptions<ProjectInfo> _projectInfo = ProjectInfo;
+        private readonly TelegramService _telegramService = telegramService;
         [HttpPost("addOrder")]
         public async Task<IActionResult> AddOrder([FromBody] Order order)
         {
@@ -52,7 +54,6 @@ namespace WAHShopBackend.Controllers
 
                 if (result > 0)
                 {
-
                     // check if user email is set, if not get user from database
                     if (order.User == null || string.IsNullOrWhiteSpace(order.User.Email))
                     {
@@ -84,6 +85,11 @@ namespace WAHShopBackend.Controllers
                                 string body = $"Eine neue Bestellung wurde aufgegeben. Bestellnummer: {savedOrder.Id}<br>"+
                                     $"BezahlungsMethod: <strong>{savedOrder.PaymentMethod?.Description_de ?? "Fehler bei PaymentMethod Abholung"}</strong>";
                                 _ = _emailService.SendEmailAsync(_projectInfo.Value.Email!, subject, body);
+                                // eine Nachricht zu telegrambot senden
+                                string telegramMessage = $"Neue Bestellung eingegangen - Bestellnummer {savedOrder.Id}\n" +
+                                    $"BezahlungsMethod: {savedOrder.PaymentMethod?.Description_de ?? "Fehler bei PaymentMethod Abholung"}";
+
+                                await _telegramService.SendMessageAsync(telegramMessage);
                             }
                         }
                         // check if discount code is set, if so, update the discount code usage
@@ -242,6 +248,7 @@ namespace WAHShopBackend.Controllers
                 var orderItems = await _context.OrderItems
                     .Where(oi => orderIds.Contains(oi.OrderId))
                     .Include(oi => oi.Product).ThenInclude(p => p!.TaxRate)
+                    .Include(oi => oi.Product).ThenInclude(p => p!.ProductImages)
                     .Include(oi => oi.Product!.Category)
                     .ToListAsync();
                 // Dann führen wir es mit den Anfragen zusammen und beschleunigen so den Prozess des Abrufens der Anfragedaten.

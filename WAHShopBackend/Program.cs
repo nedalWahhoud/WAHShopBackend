@@ -8,7 +8,11 @@ using WAHShopBackend.EmailF;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.FileProviders;
 using WAHShopBackend.ProductP;
-using WAHShopBackend.ProductImagesF;
+using WAHShopBackend.ImagesF;
+using Microsoft.AspNetCore.HttpOverrides;
+using WAHShopBackend.TelegramF;
+using Microsoft.Extensions.Options;
+using Telegram.Bot;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,20 +30,36 @@ builder.Services.Configure<JwtSettings>(jwtSettingsSection);
 var jwtSettings = jwtSettingsSection.Get<JwtSettings>();
 builder.Services.AddAuthorization();
 // token validation parameters
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+
+    options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtSettings!.Issuer,
-            ValidAudience = jwtSettings.Audience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key!))
-        };
-    });
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtSettings!.Issuer,
+        ValidAudience = jwtSettings.Audience,
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(jwtSettings.Key!))
+    };
+})
+.AddGoogle(googleOptions =>
+{
+    googleOptions.ClientId =
+        builder.Configuration["Authentification:Google:ClientId"] ?? "";
+
+    googleOptions.ClientSecret =
+        builder.Configuration["Authentification:Google:ClientSecret"] ?? "";
+}); 
+
 // dataabse
 builder.Services.AddDbContext<MyDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
@@ -56,6 +76,20 @@ builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<ProductService>();
 // productimages service
 builder.Services.AddScoped<ProductImagesService>();
+// CarouselImages service
+builder.Services.AddScoped<CarouselImagesService>();
+// telegram service
+builder.Services.Configure<TelegramBotSettings>(
+    builder.Configuration.GetSection("TelegramBot"));
+
+builder.Services.AddSingleton<TelegramBotClient>(sp =>
+{
+    // Einstellungen abrufen
+    var settings = sp.GetRequiredService<IOptions<TelegramBotSettings>>().Value;
+    return new TelegramBotClient(settings.Token); // bot ersteööem
+});
+
+builder.Services.AddSingleton<TelegramService>();
 // email token
 builder.Services.AddIdentity<UserIdentity, IdentityRole>(options =>
 {
@@ -79,6 +113,14 @@ else
 builder.Services.AddSingleton(appConfig);
 
 var app = builder.Build();
+
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor |
+        ForwardedHeaders.XForwardedProto |
+        ForwardedHeaders.XForwardedHost
+});
 
 // static files für share storage
 app.UseStaticFiles(new StaticFileOptions

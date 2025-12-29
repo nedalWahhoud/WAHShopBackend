@@ -10,5 +10,6 @@
         public string BirthDate { get; set; } = DateTime.Now.ToString("yyyy.MM.dd");
         public bool IsGuest { get; set; }
         public string SignupProvider { get; set; } = string.Empty;
+        public string Token { get; set; } = string.Empty;
     }
 }

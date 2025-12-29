@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using WAHShopBackend.Data;
 using WAHShopBackend.Models;
-using WAHShopBackend.ProductImagesF;
+using WAHShopBackend.ImagesF;
 using WAHShopBackend.ProductP;
 
 namespace WAHShopBackend.Controllers
@@ -210,7 +210,6 @@ namespace WAHShopBackend.Controllers
                             return StatusCode(500, new ValidationResult { Result = false, Message = "Bildaktualisierung fehlgeschlagen: " + resultImage.Message });
                         }
                     }
-
 
                     //
                     _context.Entry(existingProduct).CurrentValues.SetValues(editProduct);

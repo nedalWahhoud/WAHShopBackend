@@ -24,7 +24,7 @@ namespace WAHShopBackend.Data
         public DbSet<BankTransferDetails> BankTransferDetails { get; set; }
         public DbSet<ShippingProvider> ShippingProviders { get; set; }
         public DbSet<OurDeliveryServiceArea> OurDeliveryServiceArea { get; set; }
-
+        public DbSet<CarouselImage> CarouselImage { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
