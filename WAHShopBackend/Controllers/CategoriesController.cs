@@ -9,6 +9,81 @@ namespace WAHShopBackend.Controllers
     public class CategoriesController(MyDbContext context) : ControllerBase
     {
         private readonly MyDbContext _context = context;
+        [HttpPost("createCategory")]
+        public async Task<IActionResult> CreateCategory([FromBody] Categories category)
+        {
+            if (category == null) {
+                return BadRequest(new ValidationResult { Result = false, Message = "Category data is null" });
+            }
+
+            try
+            {
+                _context.Categories.Add(category);
+                await _context.SaveChangesAsync();
+                return Ok(new ValidationResult { Result = true, Message = $"Category created successfully, Id:{category.Id}." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
+            }
+        }
+        [HttpPut("updateCategory")]
+        public async Task<IActionResult> UpdateCategory([FromBody] Categories category)
+        {
+            if (category == null || category.Id <= 0)
+            {
+                return BadRequest(new ValidationResult { Result = false, Message = "Ungültige Categorydaten." });
+            }
+            try
+            {
+                var existingCategory = await _context.Categories.FindAsync(category.Id);
+                if (existingCategory == null)
+                {
+                    return NotFound(new ValidationResult { Result = false, Message = "Category nicht gefunden." });
+                }
+
+                _context.Entry(existingCategory).CurrentValues.SetValues(category);
+                int result = await _context.SaveChangesAsync();
+                if (result > 0)
+                {
+                    return Ok(new ValidationResult { Result = true, Message = "Category erfolgreich aktualisiert." });
+                }
+                else
+                {
+                    return StatusCode(500, new ValidationResult { Result = false, Message = "Category-Aktualisierung fehlgeschlagen" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
+            }
+        }
+        [HttpDelete("deleteCategory/{id}")]
+        public async Task<IActionResult> DeleteCategory(int id)
+        {
+            try
+            {
+                var category = await _context.Categories.FindAsync(id);
+                if (category == null)
+                {
+                    return NotFound(new ValidationResult { Result = false, Message = "Category nicht gefunden." });
+                }
+                _context.Categories.Remove(category);
+                int result = await _context.SaveChangesAsync();
+                if (result > 0)
+                {
+                    return Ok(new ValidationResult { Result = true, Message = "Category erfolgreich gelöscht." });
+                }
+                else
+                {
+                    return StatusCode(500, new ValidationResult { Result = false, Message = "Category-Löschung fehlgeschlagen" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
+            }
+        }
         [HttpGet("getCategories")]
         public async Task<IActionResult> GetCategories()
         {
