@@ -25,20 +25,24 @@ namespace WAHShopBackend.Data
         public DbSet<ShippingProvider> ShippingProviders { get; set; }
         public DbSet<OurDeliveryServiceArea> OurDeliveryServiceArea { get; set; }
         public DbSet<CarouselImage> CarouselImage { get; set; }
+        public DbSet<DistributionLines> DistributionLines { get; set; }
+        public DbSet <Customers> Customers { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            // Product
             modelBuilder.Entity<Product>()
                .HasMany(p => p.ProductImages)
                .WithOne(pi => pi.Product)
                .HasForeignKey(pi => pi.ProductId)
                .OnDelete(DeleteBehavior.Cascade);
-
+            // Order
             modelBuilder.Entity<Order>()
                 .HasMany(o => o.OrderItems)
                 .WithOne(oi => oi.Order)
                 .HasForeignKey(oi => oi.OrderId)
                 .OnDelete(DeleteBehavior.Cascade);
+            
         }
     }
 }

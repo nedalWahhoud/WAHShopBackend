@@ -127,7 +127,7 @@ namespace WAHShopBackend.Controllers
         {
             try
             {
-                if (categoryIds == null || !categoryIds.Any())
+                if (categoryIds == null || categoryIds.Count == 0)
                 {
                     return BadRequest(new ValidationResult { Result = false, Message = "No category IDs provided" });
                 }
@@ -145,18 +145,17 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
-        private readonly Random random = new();
         [HttpGet("getProductsByCategoryId/{categoryId}")]
         public async Task<IActionResult> GetProductsByCategoryId(int categoryId, [FromQuery] GetItems<Product> getItems, [FromQuery] List<int>? excludeProductsIds = null, [FromQuery] bool IsAdmin = false)
         {
             // -1 is for OnOffer
             try
             {
-                excludeProductsIds = excludeProductsIds ?? [];
+                excludeProductsIds ??= [];
 
                 var query = _context.Products
                     .Where(p => (categoryId != -1 ? p.CategoryId == categoryId : p.DiscountedPrice > 0) && !excludeProductsIds.Contains(p.Id) &&
-                     (!IsAdmin ? p.Quantity > 0 : true))
+                     (IsAdmin || p.Quantity > 0))
                     .Include(p => p.Category)
                     .Include(p => p.Manufacturer)
                     .Include(p => p.TaxRate)
