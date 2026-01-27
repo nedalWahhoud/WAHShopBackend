@@ -20,6 +20,7 @@ namespace WAHShopBackend.Models
         public string? Notes_de { get; set; }
         public string? Notes_ar { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public int StopNumber { get; set; }
 
         // 🔗 FK
         public int DistributionLineId { get; set; }

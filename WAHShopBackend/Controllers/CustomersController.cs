@@ -110,5 +110,28 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
+        [HttpGet("getCustomerById/{id}")]
+        public async Task<IActionResult> GetCustomerById(int id)
+        {
+            if (id <= 0)
+            {
+                return BadRequest(new ValidationResult { Result = false, Message = "Ungültige Kunden Id." });
+            }
+            try
+            {
+                var customer = await _context.Customers
+                    .Include(c => c.DistributionLine)
+                    .FirstOrDefaultAsync(c => c.Id == id);
+                if (customer == null)
+                {
+                    return NotFound(new ValidationResult { Result = false, Message = "Kunde nicht gefunden." });
+                }
+                return Ok(customer);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
+            }
+        }
     }
 }
