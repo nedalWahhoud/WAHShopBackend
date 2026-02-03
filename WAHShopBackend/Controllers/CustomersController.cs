@@ -1,15 +1,23 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Net.NetworkInformation;
+using System.Security.Claims;
+using System.Text;
 using WAHShopBackend.Data;
 using WAHShopBackend.Models;
+using System.Security.Cryptography;
 
 namespace WAHShopBackend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class CustomersController(MyDbContext context) : ControllerBase
+    public class CustomersController(MyDbContext context, IOptions<JwtSettings> jwtSettings) : ControllerBase
     {
         private readonly MyDbContext _context = context;
+        private readonly IOptions<JwtSettings> _jwtSettings = jwtSettings;
         // customers APIs
         [HttpGet("getAllCustomers")]
         public async Task<IActionResult> GetAllCustomers()
@@ -47,7 +55,7 @@ namespace WAHShopBackend.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
+                return StatusCode(500, new ValidationResult { Result = false, Message = ex.InnerException?.ToString() ?? ex.Message });
             }
         }
         [HttpPut("updateCustomer")]
@@ -132,6 +140,47 @@ namespace WAHShopBackend.Controllers
             {
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
+        }
+        // login
+        [HttpPost("customerLogin")]
+        public async Task<IActionResult> Login(CustomerLoginDto dto)
+        {
+            try
+            {
+                var customer = await _context.Customers
+                               .FirstOrDefaultAsync(c =>
+                               (c.PhoneNumber == dto.PhoneNumber || c.Id == dto.Id) 
+                               && c.PIN == dto.PIN);
+
+                if (customer == null)
+                    return Unauthorized(new ValidationResult { Result = false, Message = "Ungültige Telefonnummer oder PIN" });
+
+                return Ok(new ValidationResult { Result = true, Message = GetCustomerToken(customer.Id) });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
+            }
+        }
+        private string GetCustomerToken(int customerId)
+        {
+            var claims = new[]
+            {
+               new Claim(ClaimTypes.NameIdentifier, customerId.ToString()),
+               new Claim("role", "Customer"),
+             };
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Value.Key!));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                issuer: _jwtSettings.Value.Issuer,
+                audience: _jwtSettings.Value.Audience,
+                claims: claims,
+                expires: DateTime.UtcNow.AddMinutes(1),
+                signingCredentials: creds);
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }
 }

@@ -27,22 +27,43 @@ namespace WAHShopBackend.Data
         public DbSet<CarouselImage> CarouselImage { get; set; }
         public DbSet<DistributionLines> DistributionLines { get; set; }
         public DbSet <Customers> Customers { get; set; }
+        public DbSet<DebtCustomers> DebtCustomers { get; set; }
+        public DbSet<TransactionsCustomers> TransactionsCustomers { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-            // Product
+            // delete cascade Product -> ProductImages
             modelBuilder.Entity<Product>()
                .HasMany(p => p.ProductImages)
                .WithOne(pi => pi.Product)
                .HasForeignKey(pi => pi.ProductId)
                .OnDelete(DeleteBehavior.Cascade);
-            // Order
+            // delete cascade Order -> OrderItems
             modelBuilder.Entity<Order>()
                 .HasMany(o => o.OrderItems)
                 .WithOne(oi => oi.Order)
                 .HasForeignKey(oi => oi.OrderId)
                 .OnDelete(DeleteBehavior.Cascade);
-            
+            // trigger TransactionsCustomers -> DebtCustomers
+            modelBuilder.Entity<TransactionsCustomers>()
+            .ToTable(tb => tb.HasTrigger("trg_UpdateDebt"));
+            // enum to string TransactionsCustomers.Type
+            modelBuilder.Entity<TransactionsCustomers>()
+            .Property(e => e.Type)
+            .HasConversion<string>();
+
+            // delete cascade Customers -> TransactionsCustomers
+            modelBuilder.Entity<Customers>()
+            .HasMany(t => t.Transactions)
+            .WithOne(c => c.Customer)
+            .HasForeignKey(t => t.CustomerId)
+            .OnDelete(DeleteBehavior.Cascade);
+            // delete cascade Customers -> DebtCustomers
+            modelBuilder.Entity<Customers>()
+           .HasMany(t => t.DebtCustomers)
+           .WithOne(c => c.Customer)
+           .HasForeignKey(t => t.CustomerId)
+           .OnDelete(DeleteBehavior.Cascade); 
         }
     }
 }

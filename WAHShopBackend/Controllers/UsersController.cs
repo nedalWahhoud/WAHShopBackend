@@ -286,12 +286,6 @@ namespace WAHShopBackend.Controllers
         [HttpPost("addGuest")]
         public async Task<IActionResult> AddGuest(User userGuest)
         {
-            // if user name exist
-           /* var checkUsername = await _context.Users.AnyAsync(u => u.UserName.ToLower() == userGuest.UserName.ToLower() && u.IsGuest==false);
-            if (checkUsername)
-            {
-                return BadRequest(new ValidationResult { Result = false, Message = "Username already exists" });
-            }*/
             // if user email exist
             var checkEmail = await _context.Users.AnyAsync(u => u.Email.ToLower() == userGuest.Email.ToLower() && u.IsGuest == false);
             if (checkEmail)

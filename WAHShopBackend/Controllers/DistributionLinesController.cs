@@ -30,6 +30,24 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
+        [HttpGet("getDistributionLineById/{id}")]
+        public async Task<IActionResult> GetDistributionLineById(int id)
+        {
+            try
+            {
+                var distributionLine = await _context.DistributionLines
+                    .FirstOrDefaultAsync(dl => dl.Id == id);
+                if (distributionLine == null)
+                {
+                    return NotFound(new ValidationResult { Result = false, Message = "Keine Verteilungslinie für die angegebene Id gefunden." });
+                }
+                return Ok(distributionLine);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
+            }
+        }
         [HttpPost("addDistributionLine")]
         public async Task<IActionResult> AddDistributionLines([FromBody] DistributionLines distributionLines)
         {

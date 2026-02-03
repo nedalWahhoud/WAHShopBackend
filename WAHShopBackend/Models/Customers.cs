@@ -21,9 +21,17 @@ namespace WAHShopBackend.Models
         public string? Notes_ar { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public int StopNumber { get; set; }
-
+        public string PIN { get; set; } = string.Empty;
         // 🔗 FK
         public int DistributionLineId { get; set; }
-        public DistributionLines? DistributionLine { get; set; }
+        public virtual DistributionLines? DistributionLine { get; set; }
+
+        [JsonIgnore]
+        // 🔗 Navigation property
+        public ICollection<TransactionsCustomers>? Transactions { get; set; }
+        [JsonIgnore]
+        // 🔗 Navigation property
+        public ICollection<DebtCustomers>? DebtCustomers { get; set; }
+
     }
 }
