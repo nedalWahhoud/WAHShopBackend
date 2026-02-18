@@ -32,38 +32,44 @@ namespace WAHShopBackend.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-            // delete cascade Product -> ProductImages
+            // cascade Product delete ProductImages
             modelBuilder.Entity<Product>()
                .HasMany(p => p.ProductImages)
                .WithOne(pi => pi.Product)
                .HasForeignKey(pi => pi.ProductId)
                .OnDelete(DeleteBehavior.Cascade);
-            // delete cascade Order -> OrderItems
+            // cascade Order delete OrderItems
             modelBuilder.Entity<Order>()
                 .HasMany(o => o.OrderItems)
                 .WithOne(oi => oi.Order)
                 .HasForeignKey(oi => oi.OrderId)
                 .OnDelete(DeleteBehavior.Cascade);
-            // trigger TransactionsCustomers -> DebtCustomers
+            // trigger TransactionsCustomers create DebtCustomers
             modelBuilder.Entity<TransactionsCustomers>()
             .ToTable(tb => tb.HasTrigger("trg_UpdateDebt"));
+            // Trigger pin generation
+            modelBuilder.Entity<Customers>()
+            .ToTable(tb => tb.HasTrigger("trg_Customers_GeneratePIN"));
             // enum to string TransactionsCustomers.Type
             modelBuilder.Entity<TransactionsCustomers>()
             .Property(e => e.Type)
             .HasConversion<string>();
 
-            // delete cascade Customers -> TransactionsCustomers
+            // cascade Customers delete TransactionsCustomers
             modelBuilder.Entity<Customers>()
             .HasMany(t => t.Transactions)
             .WithOne(c => c.Customer)
             .HasForeignKey(t => t.CustomerId)
             .OnDelete(DeleteBehavior.Cascade);
-            // delete cascade Customers -> DebtCustomers
+            // cascade Customers delete DebtCustomers
             modelBuilder.Entity<Customers>()
            .HasMany(t => t.DebtCustomers)
            .WithOne(c => c.Customer)
            .HasForeignKey(t => t.CustomerId)
-           .OnDelete(DeleteBehavior.Cascade); 
+           .OnDelete(DeleteBehavior.Cascade);
+            // trigger DebtCustomers delete TransactionsCustomers
+            modelBuilder.Entity<DebtCustomers>()
+            .ToTable(tb => tb.HasTrigger("trg_DeleteTransactionsOnDebtDelete"));
         }
     }
 }

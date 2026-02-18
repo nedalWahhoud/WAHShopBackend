@@ -3,12 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
-using System.Net.NetworkInformation;
 using System.Security.Claims;
 using System.Text;
 using WAHShopBackend.Data;
 using WAHShopBackend.Models;
-using System.Security.Cryptography;
 
 namespace WAHShopBackend.Controllers
 {
@@ -25,6 +23,8 @@ namespace WAHShopBackend.Controllers
             try
             {
                 var customers = await _context.Customers
+                    .OrderBy(c => c.DistributionLineId)
+                    .ThenBy(c => c.StopNumber)
                     .Include(c => c.DistributionLine)
                     .ToListAsync();
                 if (customers == null || customers.Count == 0)
@@ -45,17 +45,53 @@ namespace WAHShopBackend.Controllers
             {
                 return BadRequest(new ValidationResult { Result = false, Message = "Kundendaten sind null" });
             }
+
             try
             {
-                _context.Customers.Add(customer);
-                var result = await _context.SaveChangesAsync();
-                if (result <= 0)
-                    return StatusCode(500, new ValidationResult { Result = false, Message = "Die Erstellung des Kunden ist fehlgeschlagen." });
-                return Ok(new ValidationResult { Result = true, Message = $"Kunde erfolgreich erstellt, Id:{customer.Id}." });
+                IActionResult actionResult = null!;
+                var strategy = _context.Database.CreateExecutionStrategy();
+
+                await strategy.ExecuteAsync(async () =>
+                {
+                    using var transaction = await _context.Database.BeginTransactionAsync();
+
+                    // wenn nötig bearbeiten die stopnumber
+                    await ShiftStopNumbersAsync(customer.DistributionLineId, customer.StopNumber);
+
+                    //  Add customer
+                    _context.Customers.Add(customer);
+
+                    var result = await _context.SaveChangesAsync();
+
+                    if (result <= 0)
+                    {
+                        actionResult = StatusCode(500, new ValidationResult
+                        {
+                            Result = false,
+                            Message = "Die Erstellung des Kunden ist fehlgeschlagen."
+                        });
+                    }
+                    else
+                    {
+                        await transaction.CommitAsync();
+                        actionResult = Ok(new ValidationResult
+                        {
+                            Result = true,
+                            Message = $"Kunde erfolgreich erstellt.",
+                            NewId = customer.Id
+                        });
+                    }
+                });
+
+                return actionResult!;
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new ValidationResult { Result = false, Message = ex.InnerException?.ToString() ?? ex.Message });
+                return StatusCode(500, new ValidationResult
+                {
+                    Result = false,
+                    Message = ex.InnerException?.ToString() ?? ex.Message
+                });
             }
         }
         [HttpPut("updateCustomer")]
@@ -72,6 +108,7 @@ namespace WAHShopBackend.Controllers
                 {
                     return NotFound(new ValidationResult { Result = false, Message = "Kunde nicht gefunden." });
                 }
+
                 _context.Entry(existingCustomer).CurrentValues.SetValues(customer);
                 int result = await _context.SaveChangesAsync();
                 if (result > 0)
@@ -86,6 +123,30 @@ namespace WAHShopBackend.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
+            }
+        }
+        private async Task ShiftStopNumbersAsync(int distributionLineId,int newStopNumber,int? oldStopNumber = null,int? customerId = null)
+        {
+            // Neuer Erstellungsstatus (oldStopNumber == null)
+            if (oldStopNumber == null)
+            {
+                var customersToShift = await _context.Customers
+                    .Where(c =>
+                        c.DistributionLineId == distributionLineId &&
+                        c.StopNumber >= newStopNumber)
+                    .OrderByDescending(c => c.StopNumber)
+                    .ToListAsync();
+
+                foreach (var c in customersToShift)
+                    c.StopNumber += 1;
+            }
+            else
+            {
+                // wenn update, in zukünft konfigrieren
+
+                // Wenn sich die Zahl nicht ändert, tun wir nichts.
+                if (oldStopNumber == newStopNumber)
+                    return;
             }
         }
         [HttpDelete("deleteCustomer/{id}")]

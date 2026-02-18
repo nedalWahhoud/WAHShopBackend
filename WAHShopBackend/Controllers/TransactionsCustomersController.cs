@@ -52,10 +52,25 @@ namespace WAHShopBackend.Controllers
                 var result = await _context.SaveChangesAsync();
 
                 if (result > 0)
-                    return Ok(new ValidationResult { Result = true, Message = $"Id:{transactionData.Id}" });
+                    return Ok(new ValidationResult { Result = true, Message = "Transaktion erfolgreich hinzugefügt", NewId = transactionData.Id });
                 else
                     return StatusCode(500, new ValidationResult { Result = false, Message = "Transaktion konnte nicht hinzugefügt werden." });
 
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
+            }
+        }
+        [HttpGet("getTransactionsCustomerById")]
+        public async Task<IActionResult> GetTransactionsCustomersById(int id)
+        {
+            try
+            {
+                var transaction = await _context.TransactionsCustomers.FindAsync(id);
+                if (transaction == null)
+                    return NotFound(new ValidationResult { Result = false, Message = "Transaktion nicht gefunden." });
+                return Ok(transaction);
             }
             catch (Exception ex)
             {

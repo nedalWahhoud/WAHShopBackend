@@ -13,5 +13,6 @@ namespace WAHShopBackend.Models
         public bool IsGuest { get; set; }
         public bool IsAktiv { get; set; }
         public string SignupProvider { get; set; } = string.Empty;
-    }
+        public DateTime CreatedAt { get; set; }
+}
 }

@@ -27,11 +27,7 @@ namespace WAHShopBackend.Controllers
                     .Where(p => p.Quantity > 0 &&
                                 !excludeIds!.Contains(p.Id) &&
                                 (p.Name_de!.ToLower().Contains(query.ToLower()) ||
-                                p.Description_de!.ToLower().Contains(query.ToLower()) ||
-                                p.Name_ar!.ToLower().Contains(query.ToLower()) ||
-                                p.Description_ar!.ToLower().Contains(query.ToLower()) ||
-                                p.Category != null && p.Category.Name_de!.ToLower().Contains(query.ToLower()) ||
-                                p.Category != null && p.Category.Name_ar!.ToLower().Contains(query.ToLower())))
+                                p.Name_ar!.ToLower().Contains(query.ToLower())))
                     .OrderBy(p => p.Name_de)
                     .Take(11)
                     .ToListAsync();

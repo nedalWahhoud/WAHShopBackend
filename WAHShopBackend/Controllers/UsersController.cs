@@ -138,6 +138,33 @@ namespace WAHShopBackend.Controllers
 
             return user;
         }
+        [HttpGet("getAllUsers")]
+        public async Task<IActionResult> GetAllUsers([FromQuery] GetItems<User> getItems)
+        {
+            if (getItems.AllItemsLoaded == true) return Ok(new GetItems<User>() { Items = [], AllItemsLoaded = true });
+
+            try
+            {
+                List<User> users = await _context.Users
+                    .OrderByDescending(x => x.Id)
+                    .Skip(getItems.CurrentPage * getItems.PageSize)
+                    .Take(getItems.PageSize)
+                    .ToListAsync();
+
+                if(users.Count == 0)
+                {
+                    getItems.AllItemsLoaded = true;
+                }
+               
+                getItems.Items = users;
+                getItems.CurrentPage++;
+                return Ok(getItems);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ValidationResult { Result = false, Message = ex.InnerException?.Message ?? ex.Message });
+            }
+        }
         [HttpPost("signup")]
         public async Task<ActionResult<User>> Signup(SignupModel signupModel)
         {

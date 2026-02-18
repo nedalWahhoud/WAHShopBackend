@@ -153,22 +153,22 @@ namespace WAHShopBackend.Controllers
             {
                 excludeProductsIds ??= [];
 
-                var query = _context.Products
+                var baseQuery = _context.Products
                     .Where(p => (categoryId != -1 ? p.CategoryId == categoryId : p.DiscountedPrice > 0) && !excludeProductsIds.Contains(p.Id) &&
-                     (IsAdmin || p.Quantity > 0))
+                     (IsAdmin || p.Quantity > 0));
+                    
+
+                var products = await baseQuery
                     .Include(p => p.Category)
                     .Include(p => p.Manufacturer)
                     .Include(p => p.TaxRate)
                     .Include(p => p.ProductGroup)
                     .Include(p => p.ProductImages)
-                    .OrderBy(p => EF.Functions.Random())
-                    .Take(getItems.PageSize);
-
-                var products = await query
+                    .OrderBy(p => Guid.NewGuid())
+                    .Take(getItems.PageSize)
                     .ToListAsync();
 
-                int allCount = await _context.Products.Where(p => p.CategoryId == categoryId)
-                    .CountAsync();
+                int allCount = await baseQuery.CountAsync();
 
                 if (products.Count == 0 && (getItems.PageSize + excludeProductsIds.Count) >= allCount)
                 {

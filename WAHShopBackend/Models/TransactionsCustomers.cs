@@ -11,6 +11,7 @@ namespace WAHShopBackend.Models
         public decimal Amount { get; set; }
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public DateTime TransactionDate { get; set; }
+        public string? Notes { get; set; }
         // Navigation property
         public Customers? Customer { get; set; }
     }
