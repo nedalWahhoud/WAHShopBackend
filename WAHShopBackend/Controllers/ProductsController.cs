@@ -9,7 +9,7 @@ namespace WAHShopBackend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class ProductsController(MyDbContext context,ProductService productService, ProductImagesService productImagesService) : ControllerBase
+    public class ProductsController(MyDbContext context, ProductService productService, ProductImagesService productImagesService) : ControllerBase
     {
         private readonly MyDbContext _context = context;
         private readonly ProductImagesService _productImagesService = productImagesService;
@@ -55,7 +55,7 @@ namespace WAHShopBackend.Controllers
                     else
                     {
                         await DeleteProduct(newProduct.Id);
-                        return StatusCode(500,new ValidationResult { Result = false, Message = $"ProductImages array ist null" });
+                        return StatusCode(500, new ValidationResult { Result = false, Message = $"ProductImages array ist null" });
                     }
                 }
                 else
@@ -68,15 +68,16 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
-        
+
         [HttpPost("getProductByIds")]
         public async Task<IActionResult> GetProductByIds([FromBody] List<int> ids)
         {
             try
             {
                 var product = await _context.Products
+                    .AsNoTracking()
                     .Include(p => p.ProductImages)
-                    .Include(p=>p.ProductGroup)
+                    .Include(p => p.ProductGroup)
                     .Where(p => ids.Contains(p.Id))
                     .ToListAsync();
                 if (product != null && product.Count > 0)
@@ -95,6 +96,7 @@ namespace WAHShopBackend.Controllers
             try
             {
                 var product = await _context.Products
+                      .AsNoTracking()
                     .Include(p => p.Category)
                     .Include(p => p.Manufacturer)
                     .Include(p => p.TaxRate)
@@ -125,6 +127,7 @@ namespace WAHShopBackend.Controllers
             try
             {
                 var products = await _context.Products
+                    .AsNoTracking()
                     .Include(p => p.Category)
                     .Include(p => p.Manufacturer)
                     .Include(p => p.TaxRate)
@@ -157,7 +160,9 @@ namespace WAHShopBackend.Controllers
         {
             try
             {
-                var manufacturers = await _context.Manufacturers.ToListAsync();
+                var manufacturers = await _context.Manufacturers
+                    .AsNoTracking()
+                    .ToListAsync();
 
                 var getItems = new GetItems<Manufacturers>
                 {
@@ -177,7 +182,9 @@ namespace WAHShopBackend.Controllers
         {
             try
             {
-                var taxRates = await _context.TaxRates.ToListAsync();
+                var taxRates = await _context.TaxRates
+                    .AsNoTracking()
+                    .ToListAsync();
 
                 var getItems = new GetItems<TaxRate>
                 {
@@ -189,7 +196,7 @@ namespace WAHShopBackend.Controllers
             }
             catch
             {
-                return StatusCode(500, new ValidationResult { Result = false , Message = "Internal server error" });
+                return StatusCode(500, new ValidationResult { Result = false, Message = "Internal server error" });
             }
         }
         [HttpPost("updateProduct")]
@@ -204,7 +211,7 @@ namespace WAHShopBackend.Controllers
                 {
                     if (editProduct.ProductImages != null)
                     {
-                        var resultImage = _productImagesService.EditImage(existingProduct.ProductImages,editProduct.ProductImages);
+                        var resultImage = _productImagesService.EditImage(existingProduct.ProductImages, editProduct.ProductImages);
                         if (resultImage.Result == false)
                         {
                             return StatusCode(500, new ValidationResult { Result = false, Message = "Bildaktualisierung fehlgeschlagen: " + resultImage.Message });
@@ -243,24 +250,65 @@ namespace WAHShopBackend.Controllers
                 {
                     _context.Products.Remove(existingProduct);
                     int result = await _context.SaveChangesAsync();
-                    if(result > 0)
+                    if (result > 0)
                     {
                         _productImagesService.DeleteImage(id, true);
 
-                        return Ok(new ValidationResult { Result = result > 0, Message = "Product deleted successfully" });
+                        return Ok(new ValidationResult { Result = result > 0, Message = "Produkt erfolgreich gelöscht" });
                     }
                     else
-                    {
-                        return StatusCode(500, new ValidationResult { Result = false, Message = "Failed to delete product" });
-                    }
-
+                        return StatusCode(500, new ValidationResult { Result = false, Message = "Produkt konnte nicht gelöscht werden" });
                 }
                 else
-                    return StatusCode(500, new ValidationResult { Result = false, Message = "Product not found" });
+                    return StatusCode(500, new ValidationResult { Result = false, Message = "Produkt nicht gefunden" });
             }
             catch (Exception ex)
             {
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
+            }
+        }
+        /* Barcode */
+        [HttpPost("updateBarcode/{id}")]
+        public async Task<IActionResult> UpdateBarcode(int id, [FromBody] string newBarCode)
+        {
+            var existingProduct = await _context.Products.FindAsync(id);
+            if (existingProduct == null)
+                return NotFound(new ValidationResult { Result = false, Message = $"ProductId {id} nicht gefunden" });
+
+            if (existingProduct.Barcode == newBarCode)
+                return Ok(new ValidationResult { Result = false, Message = "Der Barcode ist bereits identisch, keine Aktualisierung erforderlich." });
+
+            try
+            {
+                existingProduct.Barcode = newBarCode;
+                var result = await _context.SaveChangesAsync();
+                if (result > 0)
+                    return Ok(new ValidationResult { Result = true, Message = "Erfolg" });
+                else
+                    return StatusCode(500, new ValidationResult { Result = false, Message = "Barcode könnte nicht geupdatet werden" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
+            }
+        }
+        [HttpGet("getByBarcode/{barcode}")]
+        public async Task<IActionResult> GetProductByBarcode(string barcode)
+        {
+            try
+            {
+                var product = await _context.Products
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.Barcode == barcode);
+
+                if (product == null)
+                    return NotFound(new ValidationResult { Result = false, Message = $"Kein Produkt mit diesem {barcode} gefunden." });
+
+                return Ok(product);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ValidationResult { Result = false, Message = ex.InnerException?.Message ?? ex.Message });
             }
         }
     }
