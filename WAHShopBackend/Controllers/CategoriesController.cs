@@ -89,7 +89,9 @@ namespace WAHShopBackend.Controllers
         {
             try
             {
-                var categories = await _context.Categories.ToListAsync();
+                var categories = await _context.Categories
+                    .OrderBy(c => c.Name_de)
+                    .ToListAsync();
 
                 var getItems = new GetItems<Categories>
                 {
@@ -133,6 +135,7 @@ namespace WAHShopBackend.Controllers
                 }
                 var categories = await _context.Categories
                     .Where(c => categoryIds.Contains(c.Id))
+                    .OrderBy(c => c.Name_de)
                     .ToListAsync();
                 if (categories.Count == 0)
                 {

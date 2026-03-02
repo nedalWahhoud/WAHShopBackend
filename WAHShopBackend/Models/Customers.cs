@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace WAHShopBackend.Models
 {
@@ -19,6 +20,8 @@ namespace WAHShopBackend.Models
         public string? Notes_ar { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public int StopNumber { get; set; }
+        [NotMapped]
+        public bool shouldStopnummerShift { get; set; } = false;
         public string? PIN { get; set; }
         // 🔗 FK
         public int DistributionLineId { get; set; }

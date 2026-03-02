@@ -56,7 +56,8 @@ namespace WAHShopBackend.Controllers
                     using var transaction = await _context.Database.BeginTransactionAsync();
 
                     // wenn nötig bearbeiten die stopnumber
-                    await ShiftStopNumbersAsync(customer.DistributionLineId, customer.StopNumber);
+                    if(customer.shouldStopnummerShift)
+                        await ShiftStopNumbersAsync(customer.DistributionLineId, customer.StopNumber);
 
                     //  Add customer
                     _context.Customers.Add(customer);
@@ -125,7 +126,7 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
-        private async Task ShiftStopNumbersAsync(int distributionLineId,int newStopNumber,int? oldStopNumber = null,int? customerId = null)
+        private async Task ShiftStopNumbersAsync(int distributionLineId,int newStopNumber,int? oldStopNumber = null)
         {
             // Neuer Erstellungsstatus (oldStopNumber == null)
             if (oldStopNumber == null)

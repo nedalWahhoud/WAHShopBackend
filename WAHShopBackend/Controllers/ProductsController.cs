@@ -79,6 +79,7 @@ namespace WAHShopBackend.Controllers
                     .Include(p => p.ProductImages)
                     .Include(p => p.ProductGroup)
                     .Where(p => ids.Contains(p.Id))
+                    .OrderBy(c => c.Name_de)
                     .ToListAsync();
                 if (product != null && product.Count > 0)
                     return Ok(product);
@@ -91,18 +92,27 @@ namespace WAHShopBackend.Controllers
             }
         }
         [HttpGet("getProductById/{id}")]
-        public async Task<IActionResult> GetProductById(int id)
+        public async Task<IActionResult> GetProductById(int id, bool onlyInStock = false)
         {
             try
             {
-                var product = await _context.Products
-                      .AsNoTracking()
-                    .Include(p => p.Category)
-                    .Include(p => p.Manufacturer)
-                    .Include(p => p.TaxRate)
-                    .Include(p => p.ProductGroup)
-                    .Include(p => p.ProductImages)
-                    .FirstOrDefaultAsync(p => p.Id == id);
+                var query = _context.Products
+            .AsNoTracking()
+            .Include(p => p.Category)
+            .Include(p => p.Manufacturer)
+            .Include(p => p.TaxRate)
+            .Include(p => p.ProductGroup)
+            .Include(p => p.ProductImages)
+            .Where(p => p.Id == id);
+
+
+                if (onlyInStock)
+                {
+                    query = query.Where(p => p.Quantity > 0);
+                }
+
+                var product = await query.FirstOrDefaultAsync();
+
                 if (product != null)
                     return Ok(product);
                 else
@@ -118,16 +128,12 @@ namespace WAHShopBackend.Controllers
         {
             GetItems<Product> getItems = new();
 
-            if (_getItems.AllItemsLoaded) return Ok(getItems = new GetItems<Product>
-            {
-                Items = [],
-                AllItemsLoaded = true
-            });
+            if (_getItems.AllItemsLoaded) 
+                return Ok(getItems = new GetItems<Product> {Items = [],AllItemsLoaded = true});
 
             try
             {
                 var products = await _context.Products
-                    .AsNoTracking()
                     .Include(p => p.Category)
                     .Include(p => p.Manufacturer)
                     .Include(p => p.TaxRate)
@@ -136,6 +142,7 @@ namespace WAHShopBackend.Controllers
                     .OrderByDescending(p => p.Id)
                     .Skip(_getItems.CurrentPage * _getItems.PageSize)
                     .Take(_getItems.PageSize)
+                    .OrderBy(p => p.Name_de)
                     .ToListAsync();
 
                 if (products.Count == 0)
@@ -153,6 +160,53 @@ namespace WAHShopBackend.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
+            }
+        }
+        [HttpGet("getProductsLowStock")]
+        public async Task<IActionResult> GetProductsLowStock([FromQuery] GetItems<Product> _getItems, [FromQuery] List<int>? excludeProductsIds = null)
+        {
+            GetItems<Product> getItems = new();
+
+            if (_getItems.AllItemsLoaded)
+                return Ok(getItems = new GetItems<Product> { Items = [], AllItemsLoaded = true });
+
+            try
+            {
+                var query = _context.Products
+                    .Include(p => p.Category)
+                    .Include(p => p.Manufacturer)
+                    .Include(p => p.TaxRate)
+                    .Include(p => p.ProductGroup)
+                    .Include(p => p.ProductImages)
+                    .Where(p => p.Quantity <= p.MinimumStock);
+
+                if(excludeProductsIds != null && excludeProductsIds.Count > 0)
+                {
+                    query = query.Where(p => !excludeProductsIds.Contains(p.Id));
+                }
+
+                var products = await query
+                    .Skip(_getItems.CurrentPage * _getItems.PageSize)
+                    .Take(_getItems.PageSize)
+                    .ToListAsync();
+
+                var totalCount = await query.CountAsync();
+                var loadedCount = (_getItems.CurrentPage * _getItems.PageSize) + products.Count;
+                if (loadedCount >= totalCount)
+                {
+                    getItems.AllItemsLoaded = true;
+                }
+
+                _getItems.CurrentPage++;
+                getItems.Items = products;
+                getItems.PageSize = _getItems.PageSize;
+                getItems.CurrentPage = _getItems.CurrentPage;
+
+                return Ok(getItems);
+            }
+            catch 
+            {
+                return StatusCode(500, null!);
             }
         }
         [HttpGet("getManufacturers")]
