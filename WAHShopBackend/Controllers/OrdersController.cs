@@ -51,7 +51,6 @@ namespace WAHShopBackend.Controllers
                 // add order
                 _context.Orders.Add(order);
                 var result = await _context.SaveChangesAsync();
-
                 if (result > 0)
                 {
                     // check if user email is set, if not get user from database

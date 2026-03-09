@@ -317,7 +317,7 @@ namespace WAHShopBackend.Controllers
             var checkEmail = await _context.Users.AnyAsync(u => u.Email.ToLower() == userGuest.Email.ToLower() && u.IsGuest == false);
             if (checkEmail)
             {
-                return BadRequest(new ValidationResult { Result = false, Message = "Email already exists" });
+                return BadRequest(new ValidationResult { Result = false, Message = "EmailExists" });
             }
             // empty check
             if (string.IsNullOrEmpty(userGuest.UserName) || string.IsNullOrEmpty(userGuest.Password) || string.IsNullOrEmpty(userGuest.Email))
