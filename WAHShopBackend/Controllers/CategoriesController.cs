@@ -157,7 +157,14 @@ namespace WAHShopBackend.Controllers
                 excludeProductsIds ??= [];
 
                 var baseQuery = _context.Products
-                    .Where(p => (categoryId != -1 ? p.CategoryId == categoryId : p.DiscountedPrice > 0) && !excludeProductsIds.Contains(p.Id) &&
+                    .Where(p => (categoryId == -1 ?
+                       (p.ProductDiscount != null &&
+                        p.ProductDiscount.DiscountedPrice > 0 &&
+                        DateTime.Today >= p.ProductDiscount.StartDate.Date &&
+                        DateTime.Today <= p.ProductDiscount.EndDate.Date)
+                        : p.CategoryId == categoryId
+                        )
+                    && !excludeProductsIds.Contains(p.Id) &&
                      (IsAdmin || p.Quantity > 0));
                     
 
@@ -167,6 +174,7 @@ namespace WAHShopBackend.Controllers
                     .Include(p => p.TaxRate)
                     .Include(p => p.ProductGroup)
                     .Include(p => p.ProductImages)
+                    .Include(p => p.ProductDiscount)
                     .OrderBy(p => Guid.NewGuid())
                     .Take(getItems.PageSize)
                     .ToListAsync();

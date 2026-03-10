@@ -8,6 +8,7 @@ namespace WAHShopBackend.Data
         public DbSet<User> Users { get; set; }
         public DbSet<Product> Products { get; set; }
         public DbSet<ProductImages> ProductImages { get; set; }
+        public DbSet<ProductDiscounts> ProductDiscounts { get; set; }
         public DbSet<Categories> Categories { get; set; }
         public DbSet<Manufacturers> Manufacturers { get; set; }
         public DbSet<Address> Addresses { get; set; }
@@ -44,6 +45,13 @@ namespace WAHShopBackend.Data
                 .WithOne(oi => oi.Order)
                 .HasForeignKey(oi => oi.OrderId)
                 .OnDelete(DeleteBehavior.Cascade);
+            // cascade Product delete ProductDiscount
+            modelBuilder.Entity<Product>()
+             .HasOne(p => p.ProductDiscount)          
+             .WithOne(d => d.Product)          
+             .HasForeignKey<ProductDiscounts>(d => d.ProductsId)
+             .OnDelete(DeleteBehavior.Cascade);
+
             // trigger TransactionsCustomers create DebtCustomers
             modelBuilder.Entity<TransactionsCustomers>()
             .ToTable(tb => tb.HasTrigger("trg_UpdateDebt"));

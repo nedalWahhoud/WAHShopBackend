@@ -7,7 +7,6 @@ using System.Text;
 using WAHShopBackend.EmailF;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.FileProviders;
-using WAHShopBackend.ProductP;
 using WAHShopBackend.ImagesF;
 using Microsoft.AspNetCore.HttpOverrides;
 using WAHShopBackend.TelegramF;
@@ -72,8 +71,6 @@ builder.Services.AddDbContext<MyDbContext>(options =>
         }));
 // email service 
 builder.Services.AddScoped<EmailService>();
-// product service
-builder.Services.AddScoped<ProductService>();
 // productimages service
 builder.Services.AddScoped<ProductImagesService>();
 // CarouselImages service

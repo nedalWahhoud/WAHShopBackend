@@ -3,17 +3,15 @@ using Microsoft.EntityFrameworkCore;
 using WAHShopBackend.Data;
 using WAHShopBackend.Models;
 using WAHShopBackend.ImagesF;
-using WAHShopBackend.ProductP;
 
 namespace WAHShopBackend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class ProductsController(MyDbContext context, ProductService productService, ProductImagesService productImagesService) : ControllerBase
+    public class ProductsController(MyDbContext context,ProductImagesService productImagesService) : ControllerBase
     {
         private readonly MyDbContext _context = context;
         private readonly ProductImagesService _productImagesService = productImagesService;
-        private readonly ProductService _productService = productService;
 
         [HttpPost("addProduct")]
         public async Task<IActionResult> AddProduct([FromBody] Product newProduct)
@@ -23,11 +21,6 @@ namespace WAHShopBackend.Controllers
 
             try
             {
-                string Message = string.Empty;
-                bool isValid = _productService.IsValidProduct(newProduct!, out Message);
-                if (!isValid)
-                    return BadRequest(new ValidationResult { Result = false, Message = Message });
-
                 _context.Products.Add(newProduct);
                 int result = await _context.SaveChangesAsync();
                 if (result > 0)
@@ -44,7 +37,7 @@ namespace WAHShopBackend.Controllers
                                 _productImagesService.DeleteImage(newProduct.Id, true);
                                 return StatusCode(500, new ValidationResult { Result = false, Message = "Das Produkt wurde hinzugefügt (aber wieder gelöscht), das Bild konnte nicht in der Datenbank gespeichert werden." });
                             }
-                            return Ok(new ValidationResult { Result = true, Message = $"Id:{newProduct.Id}" });
+                            return Ok(new ValidationResult { Result = true, Message = "Erfolgreich erstellt", NewId = newProduct.Id });
                         }
                         else
                         {
@@ -78,6 +71,7 @@ namespace WAHShopBackend.Controllers
                     .AsNoTracking()
                     .Include(p => p.ProductImages)
                     .Include(p => p.ProductGroup)
+                    .Include(p => p.ProductDiscount)
                     .Where(p => ids.Contains(p.Id))
                     .OrderBy(c => c.Name_de)
                     .ToListAsync();
@@ -103,6 +97,7 @@ namespace WAHShopBackend.Controllers
             .Include(p => p.TaxRate)
             .Include(p => p.ProductGroup)
             .Include(p => p.ProductImages)
+            .Include(p => p.ProductDiscount)
             .Where(p => p.Id == id);
 
 
@@ -139,6 +134,7 @@ namespace WAHShopBackend.Controllers
                     .Include(p => p.TaxRate)
                     .Include(p => p.ProductGroup)
                     .Include(p => p.ProductImages)
+                    .Include(p => p.ProductDiscount)
                     .OrderByDescending(p => p.Id)
                     .Skip(_getItems.CurrentPage * _getItems.PageSize)
                     .Take(_getItems.PageSize)
@@ -178,6 +174,7 @@ namespace WAHShopBackend.Controllers
                     .Include(p => p.TaxRate)
                     .Include(p => p.ProductGroup)
                     .Include(p => p.ProductImages)
+                    .Include(p => p.ProductDiscount)
                     .Where(p => p.Quantity <= p.MinimumStock);
 
                 if(excludeProductsIds != null && excludeProductsIds.Count > 0)
@@ -260,15 +257,30 @@ namespace WAHShopBackend.Controllers
             {
                 var existingProduct = await _context.Products
                     .Include(p => p.ProductImages)
+                    .Include(p => p.ProductDiscount)
                     .FirstOrDefaultAsync(p => p.Id == editProduct.Id);
                 if (existingProduct != null)
                 {
+                    // productimage
                     if (editProduct.ProductImages != null)
                     {
                         var resultImage = _productImagesService.EditImage(existingProduct.ProductImages, editProduct.ProductImages);
                         if (resultImage.Result == false)
                         {
                             return StatusCode(500, new ValidationResult { Result = false, Message = "Bildaktualisierung fehlgeschlagen: " + resultImage.Message });
+                        }
+                    }
+                    // Product Discount 
+                    if (editProduct.ProductDiscount != null)
+                    {
+                        if (existingProduct.ProductDiscount == null)
+                        {
+                            editProduct.ProductDiscount.ProductsId = existingProduct.Id;
+                            _context.ProductDiscounts.Add(editProduct.ProductDiscount);
+                        }
+                        else
+                        {
+                            _context.Entry(existingProduct.ProductDiscount).CurrentValues.SetValues(editProduct.ProductDiscount);
                         }
                     }
 
