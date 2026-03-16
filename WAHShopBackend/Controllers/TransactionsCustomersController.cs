@@ -52,10 +52,34 @@ namespace WAHShopBackend.Controllers
                 var result = await _context.SaveChangesAsync();
 
                 if (result > 0)
-                    return Ok(new ValidationResult { Result = true, Message = "Transaktion erfolgreich hinzugefügt", NewId = transactionData.Id });
+                {
+                    var debt = await _context.DebtCustomers
+                               .FirstOrDefaultAsync(d => d.CustomerId == transactionData.CustomerId);
+
+                    if (debt != null && debt.Balance == 0)
+                    {
+                        _context.DebtCustomers.Remove(debt);
+                        await _context.SaveChangesAsync();
+
+                        // -100 ist ein spezieller Wert, der anzeigt, dass die Transaktion erfolgreich hinzugefügt wurde, aber die ID nicht zurückgegeben werden kann, da sie von einem Trigger alle Transaktons gelöscht wurden, weil die Balance == 0.
+                        return Ok(new ValidationResult { Result = true, Message = "Transaktion erfolgreich hinzugefügt, aber der Saldo 0 beträgt, deswegen wurden alle Transaktions von Trigger (trg_DeleteTransactionsOnDebtDelete) gelöscht", NewId = -100 });
+                    }
+                    else
+                    {
+                        return Ok(new ValidationResult {Result = true,Message = "Transaktion erfolgreich hinzugefügt",NewId = transactionData.Id});
+                    }
+                }
                 else
                     return StatusCode(500, new ValidationResult { Result = false, Message = "Transaktion konnte nicht hinzugefügt werden." });
 
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                return Ok(new ValidationResult
+                {
+                    Result = true,
+                    Message = "Transaktion erfolgreich hinzugefügt."
+                });
             }
             catch (Exception ex)
             {
