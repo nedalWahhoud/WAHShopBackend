@@ -6,6 +6,8 @@ namespace WAHShopBackend.Data
     public class MyDbContext(DbContextOptions<MyDbContext> options) : DbContext(options)
     {
         public DbSet<User> Users { get; set; }
+        public DbSet<Permission> Permissions { get; set; }
+        public DbSet<UserPermission> UserPermissions { get; set; }
         public DbSet<Product> Products { get; set; }
         public DbSet<ProductImages> ProductImages { get; set; }
         public DbSet<ProductDiscounts> ProductDiscounts { get; set; }
@@ -70,6 +72,21 @@ namespace WAHShopBackend.Data
            .WithOne(c => c.Customer)
            .HasForeignKey(t => t.CustomerId)
            .OnDelete(DeleteBehavior.Cascade);
+            /* User */
+            modelBuilder.Entity<UserPermission>()
+           .HasKey(up => new { up.UserId, up.PermissionId });
+
+            modelBuilder.Entity<UserPermission>()
+                .HasOne(up => up.User)
+                .WithMany(u => u.UserPermissions)
+                .HasForeignKey(up => up.UserId);
+
+            modelBuilder.Entity<UserPermission>()
+                .HasOne(up => up.Permission)
+                .WithMany(p => p.UserPermissions)
+                .HasForeignKey(up => up.PermissionId);
+
+
             /* Trigger */
             // trigger TransactionsCustomers create DebtCustomers
             modelBuilder.Entity<TransactionsCustomers>()

@@ -24,7 +24,7 @@ namespace WAHShopBackend.Controllers
         private UserManager<UserIdentity> _userManager = userManager;
         private readonly SignInManager<UserIdentity> _signInManager = signInManager;
         private readonly AppConfig _appConfig = appConfig;
-
+        private const string Permission = "Permission";
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginModel loginModel)
         {
@@ -32,61 +32,22 @@ namespace WAHShopBackend.Controllers
             {
                 if (loginModel.SignupProvider == "Manual")
                 {
-                    // es konnte dass bei login die UserName oder Email verwendet werden kann
-                    var user = await _context.Users.FirstOrDefaultAsync(u =>
-                        u.Email!.ToLower() == loginModel.Email!.ToLower()
-                       && u.IsGuest == false && u.SignupProvider == "Manual" && u.IsAktiv == true);
+                    // Es konnte dass bei login die UserName oder Email verwendet werden kann
+                    var user = await _context.Users
+                               .Include(u => u.UserPermissions)
+                               .ThenInclude(up => up.Permission)
+                               .FirstOrDefaultAsync(u =>
+                               u.Email!.ToLower() == loginModel.Email!.ToLower()
+                               && u.IsGuest == false && u.SignupProvider == "Manual" && u.IsAktiv == true);
 
                     if (user == null || !BCrypt.Net.BCrypt.Verify(loginModel!.Password.Trim(), user!.Password!.Trim()) || user.IsGuest == true)
-                    {
                         return Unauthorized(new ValidationResult { Result = false, Message = "Falsches Passwort oder E-Mail." });
-                    }
                     if (user.IsAktiv == false)
-                    {
                         return Unauthorized(new ValidationResult { Result = false, Message = "Benutzer ist nicht aktiv" });
-                    }
 
-                    return Ok(new LoginModel { Token = GetToken(user) });
-                }
-                else if (loginModel.SignupProvider == "Google")
-                {
-                    // Google login
-                    // es konnte dass bei login die UserName oder Email verwendet werden kann
-                    var user = await _context.Users.FirstOrDefaultAsync(u =>
-                        u.Email!.ToLower() == loginModel.Email!.ToLower()
-                       && u.IsGuest == false && u.SignupProvider == "Google" && u.IsAktiv == true);
+                    string token = GetToken(user,user?.UserPermissions);
 
-                    // wenn der User nicht existiert, dann signup ohne Passwort und bestätigungslink da es ein Google Login ist
-                    if (user == null)
-                    {
-                        User newUser = new()
-                        {
-                            UserName = loginModel.UserName,
-                            Password = "",
-                            Email = loginModel.Email,
-                            BirthDate = "0",
-                            Role = "user", // Standardrolle für Google-Login
-                            IsGuest = false,
-                            IsAktiv = true, // Google login ist immer aktiv
-                            SignupProvider = "Google"
-                        };
-
-                        _context.Users.Add(newUser);
-                        var result = await _context.SaveChangesAsync();
-                        if (result > 0)
-                        {
-                            return Ok(new LoginModel { Token = GetToken(newUser) });
-                        }
-                        else
-                        {
-                            return BadRequest(new ValidationResult { Result = false, Message = "Fehler beim Erstellen des Benutzers" });
-                        }
-                    }
-                    else if (user.IsAktiv == false)
-                    {
-                        return Unauthorized(new ValidationResult { Result = false, Message = "Benutzer ist nicht aktiv" });
-                    }
-                    return Ok(new LoginModel{ Token = GetToken(user)});
+                    return Ok(new LoginModel { Token = token });
                 }
                 else
                 {
@@ -98,7 +59,7 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = "Internal server error " + ex.Message });
             }
         }
-        private string GetToken(User user)
+        private string GetToken(User user, List<UserPermission>? userPermissions = null)
         {
             var claims = new[]
             {
@@ -109,6 +70,15 @@ namespace WAHShopBackend.Controllers
                new Claim(ClaimTypes.DateOfBirth, user.BirthDate),
                new Claim("SignupProvider", user.SignupProvider)
              };
+
+            if(userPermissions != null)
+            {
+                foreach (var userPermission in userPermissions)
+                {
+                    claims = [.. claims, new Claim(Permission, userPermission.Permission.Name)];
+                }
+            }
+
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Value.Key!));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
@@ -116,7 +86,7 @@ namespace WAHShopBackend.Controllers
                 issuer: _jwtSettings.Value.Issuer,
                 audience: _jwtSettings.Value.Audience,
                 claims: claims,
-                expires: DateTime.Now.AddHours(2),
+                expires: DateTime.Now.AddDays(365),
                 signingCredentials: creds
             );
             
@@ -124,10 +94,13 @@ namespace WAHShopBackend.Controllers
 
         }
         // get: api/users
-        [HttpGet("{id}")]
-        public async Task<ActionResult<User>> GetUserById(int id)
+        [HttpGet("getUserById/{id}")]
+        public async Task<IActionResult> GetUserById(int id)
         {
-            var user = await _context.Users.FindAsync(id);
+            var user = await _context.Users
+                .Include(u => u.UserPermissions)
+                .ThenInclude(up => up.Permission)
+                .FirstOrDefaultAsync(u => u.Id == id);
 
             if (user == null) return Unauthorized(new ValidationResult { Result = false, Message = "Benutzer nicht gefunden"} );
 
@@ -136,7 +109,10 @@ namespace WAHShopBackend.Controllers
                 return Unauthorized(new ValidationResult { Result = false, Message = "Benutzer ist nicht aktiv" });
             }
 
-            return user;
+            string token = GetToken(user, user?.UserPermissions);
+
+            return Ok(new LoginModel { Token = token });
+
         }
         [HttpGet("getAllUsers")]
         public async Task<IActionResult> GetAllUsers([FromQuery] GetItems<User> getItems)
@@ -181,7 +157,7 @@ namespace WAHShopBackend.Controllers
                     if (user1 != null)
                     {
                         // Send confirmation email
-                        UserIdentity userIdentity = new UserIdentity()
+                        UserIdentity userIdentity = new()
                         {
                             Id = user1.Id.ToString(),
                             UserName = user1.UserName,
@@ -228,7 +204,7 @@ namespace WAHShopBackend.Controllers
                 if (addResult > 0)
                 {
                     // Send confirmation email
-                    UserIdentity userIdentity = new UserIdentity()
+                    UserIdentity userIdentity = new()
                     {
                         Id = user.Id.ToString(),
                         UserName = user.UserName,
@@ -406,23 +382,6 @@ namespace WAHShopBackend.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
-            }
-        }
-        [HttpGet("checkAdminStatus/{id}")]
-        public async Task<IActionResult> CheckAdminStatus(int id)
-        {
-            var user = await _context.Users.FindAsync(id);
-            if (user == null)
-            {
-                return NotFound(new ValidationResult { Result = false, Message = "nicht gefunden" });
-            }
-            if (user.Role == "admin")
-            {
-                return Ok(new ValidationResult { Result = true, Message = "Benutzer ist ein Admin" });
-            }
-            else
-            {
-                return BadRequest(new ValidationResult { Result = false, Message = "kein Admin" });
             }
         }
         [HttpDelete("accountDelete/{userId}")]

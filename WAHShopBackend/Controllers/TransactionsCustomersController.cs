@@ -75,11 +75,7 @@ namespace WAHShopBackend.Controllers
             }
             catch (DbUpdateConcurrencyException ex)
             {
-                return Ok(new ValidationResult
-                {
-                    Result = true,
-                    Message = "Transaktion erfolgreich hinzugefügt."
-                });
+                return Ok(new ValidationResult {Result = true,  Message = ex.Message.ToString() });
             }
             catch (Exception ex)
             {

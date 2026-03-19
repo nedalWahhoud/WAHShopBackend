@@ -61,9 +61,7 @@ namespace WAHShopBackend.Controllers
 
                     //  Add customer
                     _context.Customers.Add(customer);
-
                     var result = await _context.SaveChangesAsync();
-
                     if (result <= 0)
                     {
                         actionResult = StatusCode(500, new ValidationResult
@@ -110,16 +108,29 @@ namespace WAHShopBackend.Controllers
                     return NotFound(new ValidationResult { Result = false, Message = "Kunde nicht gefunden." });
                 }
 
-                _context.Entry(existingCustomer).CurrentValues.SetValues(customer);
-                int result = await _context.SaveChangesAsync();
-                if (result > 0)
+                IActionResult actionResult = null!;
+                var strategy = _context.Database.CreateExecutionStrategy();
+                await strategy.ExecuteAsync(async () =>
                 {
-                    return Ok(new ValidationResult { Result = true, Message = "Kunde erfolgreich aktualisiert." });
-                }
-                else
-                {
-                    return StatusCode(500, new ValidationResult { Result = false, Message = "Die Aktualisierung des Kunden ist fehlgeschlagen." });
-                }
+                    using var transaction = await _context.Database.BeginTransactionAsync();
+                    // wenn nötig bearbeiten die stopnumber
+                    if (customer.shouldStopnummerShift)
+                        await ShiftStopNumbersAsync(customer.DistributionLineId, customer.StopNumber, existingCustomer.StopNumber);
+
+                    _context.Entry(existingCustomer).CurrentValues.SetValues(customer);
+                    int result = await _context.SaveChangesAsync();
+                    if (result > 0)
+                    {
+                        await transaction.CommitAsync();
+                        actionResult = Ok(new ValidationResult { Result = true, Message = "Kunde erfolgreich aktualisiert." });
+                    }
+                    else
+                    {
+                        actionResult = StatusCode(500, new ValidationResult { Result = false, Message = "Die Aktualisierung des Kunden ist fehlgeschlagen." });
+                    }
+                });
+
+                return actionResult;
             }
             catch (Exception ex)
             {
@@ -143,11 +154,28 @@ namespace WAHShopBackend.Controllers
             }
             else
             {
-                // wenn update, in zukünft konfigrieren
 
                 // Wenn sich die Zahl nicht ändert, tun wir nichts.
                 if (oldStopNumber == newStopNumber)
                     return;
+
+                if (newStopNumber < oldStopNumber)
+                {
+                    // wenn update, in zukünft konfigrieren
+                }
+                else if (newStopNumber > oldStopNumber)
+                {
+                    // Fall B: Verschieben der Station auf eine größere Zahl (z. B. von 5 auf 10)
+                    // Wir müssen die Differenz zwischen (alt + 1 und neu) um 1 verringern.
+                    var customersToShift = await _context.Customers
+                        .Where(c => c.DistributionLineId == distributionLineId &&
+                                    c.StopNumber > oldStopNumber)
+                        .OrderByDescending(c => c.StopNumber)
+                        .ToListAsync();
+
+                    foreach (var c in customersToShift)
+                        c.StopNumber += 1;
+                }
             }
         }
         [HttpDelete("deleteCustomer/{id}")]

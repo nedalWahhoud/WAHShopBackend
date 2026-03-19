@@ -95,6 +95,42 @@ namespace WAHShopBackend.Controllers
             }
 
         }
+        [HttpGet("getAllDiscountCodes")]
+        public async Task<IActionResult> GetAllDiscountCodes()
+        {
+            try
+            {
+                var discountCodes = await _context.DiscountCodes.ToListAsync();
+
+                if (discountCodes == null || discountCodes.Count == 0)
+                {
+                    return NotFound(new ValidationResult { Result = false, Message = "Keine Discount-Codes gefunden." });
+                }
+
+                return Ok(discountCodes);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
+            }
+        }
+        [HttpGet("getAllDiscountCategories")]
+        public async Task<IActionResult> GetAllDiscountCategories()
+        {
+            try
+            {
+                var discountCategories = await _context.DiscountCategory.Include(dc => dc.Category).ToListAsync();
+                if (discountCategories == null || discountCategories.Count == 0)
+                {
+                    return NotFound(new ValidationResult { Result = false, Message = "Keine Discount-Kategorie gefunden." });
+                }
+                return Ok(discountCategories);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
+            }
+        }
     }
 }
     
