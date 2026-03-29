@@ -196,7 +196,8 @@ namespace WAHShopBackend.Controllers
                     Role = "user",
                     BirthDate = signupModel.BirthDate,
                     IsAktiv = false,
-                    SignupProvider = signupModel.SignupProvider
+                    SignupProvider = signupModel.SignupProvider,
+                    CreatedAt = DateTime.Now
                 };
 
                 _context.Users.Add(user);
@@ -476,7 +477,8 @@ namespace WAHShopBackend.Controllers
                     Role = "user", // Standardrolle für Google-Login
                     IsGuest = false,
                     IsAktiv = true, // Google login ist immer aktiv
-                    SignupProvider = "Google"
+                    SignupProvider = "Google",
+                    CreatedAt = DateTime.Now
                 };
 
                 _context.Users.Add(newUser);
