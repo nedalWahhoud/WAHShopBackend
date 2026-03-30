@@ -117,7 +117,7 @@ namespace WAHShopBackend.Controllers
         [HttpGet("getAllUsers")]
         public async Task<IActionResult> GetAllUsers([FromQuery] GetItems<User> getItems)
         {
-            if (getItems.AllItemsLoaded == true) return Ok(new GetItems<User>() { Items = [], AllItemsLoaded = true });
+             if (getItems.AllItemsLoaded == true) return Ok(new GetItems<User>() { Items = [], AllItemsLoaded = true });
 
             try
             {
