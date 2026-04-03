@@ -206,6 +206,56 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, null!);
             }
         }
+        [HttpGet("getProductsOnOffer")]
+        public async Task<IActionResult> GetProductsOnOffer([FromQuery] GetItems<Product> _getItems, [FromQuery] List<int>? excludeProductsIds = null)
+        {
+            GetItems<Product> getItems = new();
+
+            if (_getItems.AllItemsLoaded)
+                return Ok(getItems = new GetItems<Product> { Items = [], AllItemsLoaded = true });
+            try
+            {
+                var query = _context.Products
+                            .Include(p => p.Category)
+                            .Include(p => p.Manufacturer)
+                            .Include(p => p.TaxRate)
+                            .Include(p => p.ProductGroup)
+                            .Include(p => p.ProductImages)
+                            .Include(p => p.ProductDiscount)
+                           .Where(p => p.ProductDiscount != null && 
+                                       p.ProductDiscount.DiscountedPrice > 0 &&
+                                       DateTime.Today >= p.ProductDiscount.StartDate && 
+                                       DateTime.Today <= p.ProductDiscount.EndDate);
+
+                if (excludeProductsIds != null && excludeProductsIds.Count > 0)
+                {
+                    query = query.Where(p => !excludeProductsIds.Contains(p.Id));
+                }
+
+                var products = await query
+                    .Skip(_getItems.CurrentPage * _getItems.PageSize)
+                    .Take(_getItems.PageSize)
+                    .ToListAsync();
+
+                var totalCount = await query.CountAsync();
+                var loadedCount = (_getItems.CurrentPage * _getItems.PageSize) + products.Count;
+                if (loadedCount >= totalCount)
+                {
+                    getItems.AllItemsLoaded = true;
+                }
+
+                _getItems.CurrentPage++;
+                getItems.Items = products;
+                getItems.PageSize = _getItems.PageSize;
+                getItems.CurrentPage = _getItems.CurrentPage;
+
+                return Ok(getItems);
+            }
+            catch
+            {
+                return StatusCode(500, null!);
+            }
+        }
         [HttpGet("getManufacturers")]
         public async Task<ActionResult<GetItems<Manufacturers>>> GetManufacturers()
         {
