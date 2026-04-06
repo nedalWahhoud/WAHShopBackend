@@ -91,7 +91,7 @@ namespace WAHShopBackend.Controllers
                                 await _telegramService.SendMessageAsync(telegramMessage);
                             }
                         }
-                        // check if discount code is set, if so, update the discount code usage
+                        // Prüfen Sie, ob ein Rabattcode festgelegt ist; falls ja, aktualisieren Sie die Rabattcode-Nutzung.
                         if (order.DiscountCodeId.HasValue)
                         {
                             var discountCode = await _context.DiscountCodes.FindAsync(order.DiscountCodeId.Value);
@@ -99,10 +99,19 @@ namespace WAHShopBackend.Controllers
                             {
                                 discountCode.TimesUsed++;
                                 _context.DiscountCodes.Update(discountCode);
+
+                                // Fügen Sie einen Eintrag in der UsedDiscountCodes-Tabelle hinzu, um die Verwendung des Rabattcodes durch den Benutzer zu verfolgen.
+                                var usedCode = new UsedDiscountCodes
+                                {
+                                    DiscountCodeId = discountCode.Id,
+                                    UserId = order.UserId ?? 0,
+                                };
+                                _context.UsedDiscountCodes.Add(usedCode);
+
                                 await _context.SaveChangesAsync();
                             }
                         }
-                        // check if discount category is set, if so, update the discount category usage
+                        // Prüfen Sie, ob eine Rabattkategorie festgelegt ist; falls ja, aktualisieren Sie die Verwendung der Rabattkategorie.
                         if (order.DiscountCategoryId.HasValue)
                         {
                             var discountCategory = await _context.DiscountCategory.FindAsync(order.DiscountCategoryId.Value);
@@ -110,6 +119,15 @@ namespace WAHShopBackend.Controllers
                             {
                                 discountCategory.TimesUsed++;
                                 _context.DiscountCategory.Update(discountCategory);
+
+                                // Fügen Sie einen Eintrag in der UsedDiscountCodes-Tabelle hinzu, um die Verwendung des Rabattcodes durch den Benutzer zu verfolgen.
+                                var usedCode = new UsedDiscountCodes
+                                {
+                                    DiscountCodeId = discountCategory.Id,
+                                    UserId = order.UserId ?? 0,
+                                };
+                                _context.UsedDiscountCodes.Add(usedCode);
+
                                 await _context.SaveChangesAsync();
                             }
                         }

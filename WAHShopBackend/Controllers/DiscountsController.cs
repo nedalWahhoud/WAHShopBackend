@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Telegram.Bot.Types;
 using WAHShopBackend.Data;
 using WAHShopBackend.Models;
 
@@ -137,11 +138,11 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
-        [HttpGet("checkDiscountCode/{code}")]
-        public async Task<IActionResult> CheckDiscountCode(string code)
+        [HttpGet("checkDiscountCode/{code}/{userId}")]
+        public async Task<IActionResult> CheckDiscountCode(string code, int userId)
         {
             if (string.IsNullOrEmpty(code))
-                return BadRequest(new ValidationResult { Result = false, Message = "Discount code cannot be null or empty." });
+                return BadRequest(new ValidationResult { Result = false, Message = "Der Rabattcode darf nicht null oder leer sein." });
             try
             {
                 code = code.Trim();
@@ -155,7 +156,14 @@ namespace WAHShopBackend.Controllers
                 dc.EndDate >= DateTime.Now);
 
                 if (discountCode == null)
-                    return NotFound(new ValidationResult { Result = false, Message = "Discount code not found or inactive." });
+                    return NotFound(new ValidationResult { Result = false, Message = "Rabattcode nicht gefunden oder inaktiv." });
+
+                var isAlreadyUsedByUser = await _context.UsedDiscountCodes
+                    .AnyAsync(u => u.UserId == userId && u.DiscountCodeId == discountCode.Id);
+
+                if (isAlreadyUsedByUser)
+                {
+                    return BadRequest(new ValidationResult { Result = false, Message = "Sie haben diesen Code bereits einmal verwendet"}); }
 
                 return Ok(discountCode);
             }
@@ -164,11 +172,11 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
-        [HttpGet("checkDiscountCategory/{code}")]
-        public async Task<IActionResult> CheckDiscountCategory(string code)
+        [HttpGet("checkDiscountCategory/{code}/{userId}")]
+        public async Task<IActionResult> CheckDiscountCategory(string code, int userId)
         {
             if (string.IsNullOrEmpty(code))
-                return BadRequest(new ValidationResult { Result = false, Message = "Discount code cannot be null or empty." });
+                return BadRequest(new ValidationResult { Result = false, Message = "Der Rabattcode darf nicht null oder leer sein." });
             try
             {
                 code = code.Trim();
@@ -181,6 +189,15 @@ namespace WAHShopBackend.Controllers
                 dc.EndDate >= DateTime.Now);
                 if (discountCategory == null)
                     return NotFound(new ValidationResult { Result = false, Message = "Rabattkategorie nicht gefunden oder inaktiv." });
+
+                var isAlreadyUsedByUser = await _context.UsedDiscountCodes
+                   .AnyAsync(u => u.UserId == userId && u.DiscountCodeId == discountCategory.Id);
+
+                if (isAlreadyUsedByUser)
+                {
+                    return BadRequest(new ValidationResult{ Result = false, Message = "Sie haben diesen Code bereits einmal verwendet" });
+                }
+
                 return Ok(discountCategory);
             }
             catch (Exception ex)

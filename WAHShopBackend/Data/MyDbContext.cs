@@ -24,6 +24,7 @@ namespace WAHShopBackend.Data
         public DbSet<GroupProducts> GroupProducts { get; set; }
         public DbSet<DiscountCodes> DiscountCodes { get; set; }
         public DbSet<DiscountCategory> DiscountCategory { get; set; }
+        public DbSet<UsedDiscountCodes> UsedDiscountCodes { get; set; }
         public DbSet<BankTransferDetails> BankTransferDetails { get; set; }
         public DbSet<ShippingProvider> ShippingProviders { get; set; }
         public DbSet<OurDeliveryServiceArea> OurDeliveryServiceArea { get; set; }

@@ -111,7 +111,7 @@ namespace WAHShopBackend.EmailF
                     double categoryitemsPrice = 0;
                     foreach (var item in order.OrderItems)
                     {
-                        if (item.Product!.CategoryId == order.DiscountCategory.CategoriesId)
+                        if (item.CategoryId == order.DiscountCategory.CategoriesId)
                         {
                             categoryitemsPrice += item.Quantity * item.UnitPrice;
                         }
