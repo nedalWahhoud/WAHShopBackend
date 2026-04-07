@@ -237,7 +237,7 @@ namespace WAHShopBackend.Controllers
         {
             if (updateProfile == null || updateProfile.UserId <= 0)
             {
-                return BadRequest(new ValidationResult { Result = false,  Message = "Invalid user data" });
+                return BadRequest(new ValidationResult { Result = false,  Message = "Ungültige Benutzerdaten" });
             }
             var existingUser = await _context.Users.FindAsync(updateProfile.UserId);
             if (existingUser == null)
@@ -268,6 +268,14 @@ namespace WAHShopBackend.Controllers
                 {
                     existingUser.BirthDate = updateProfile.BirthDate;
                 }
+                else if (updateProfile.UpdateType == UpdateTypeEnum.Role)
+                {
+                    existingUser.Role = updateProfile.Role;
+                }
+                else
+                {
+                    return BadRequest(new ValidationResult { Result = false, Message = "Ungültiger Update-Typ" });
+                }
 
 
                 _context.Users.Update(existingUser);
@@ -275,7 +283,7 @@ namespace WAHShopBackend.Controllers
 
                 if (result > 0)
                 {
-                    return Ok(new LoginModel() { Token = GetToken(existingUser) });
+                    return Ok(new LoginModel() { Token = GetToken(existingUser)});
                 }
                 else
                 { 

@@ -9,11 +9,13 @@ namespace WAHShopBackend.Models
         public string NewPassword { get; set; } = string.Empty;
         public string PasswordAgain { get; set; } = string.Empty;
         public string BirthDate { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
         public UpdateTypeEnum UpdateType { get; set; }
     }
     public enum UpdateTypeEnum : byte
     {
         Password,
-        Birthday
+        Birthday, 
+        Role
     }
 }
