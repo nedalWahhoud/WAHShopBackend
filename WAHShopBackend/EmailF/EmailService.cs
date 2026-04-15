@@ -88,13 +88,15 @@ namespace WAHShopBackend.EmailF
                 // discount code
                 if (order.DiscountCodeId != null && order.DiscountCode != null)
                 {
-                    double originalTotal = order.TotalPrice / (1 - (order.DiscountCode.DiscountPercentage / 100.0));
-                    double discountValue = originalTotal - order.TotalPrice;
+                    char valueSymbol = order.DiscountCode.DiscountType == DiscountType.Percentage ? '%' : '€';
+
+                    double originalTotal = order.OrderItems.Sum(x => x.UnitPrice * x.Quantity);
+                    double actualDiscountValue = Math.Max(0, originalTotal - order.TotalPrice);
 
                     emailRequest.Body +=
                         "Preis vor Rabatt: <strong>" + originalTotal.ToString("C", culture) + "</strong><br>" +
-                        "Rabattbetrag: <strong>" + discountValue.ToString("C", culture) + "</strong><br>" +
-                        $"Rabattprozentsatz : <strong>{order.DiscountCode?.DiscountPercentage ?? 0}%</strong><br>" +
+                        "Rabattbetrag: <strong>" + actualDiscountValue.ToString("C", culture) + "</strong><br>" +
+                        $"Rabattsatz : <strong>{order.DiscountCode?.DiscountAmount ?? 0} {valueSymbol}</strong><br>" +
                         "Preis nach Rabatt: <strong>" + order.TotalPrice.ToString("C", culture) + "</strong><br>";
 
                     // versandkosten
@@ -107,19 +109,25 @@ namespace WAHShopBackend.EmailF
                 // discount category
                 else if (order.DiscountCategoryId != null && order.DiscountCategory != null)
                 {
+                    char valueSymbol = order.DiscountCategory.DiscountType == DiscountType.Percentage ? '%' : '€';
 
-                    double categoryitemsPrice = 0;
-                    foreach (var item in order.OrderItems)
+                    double categoryitemsPrice = order.OrderItems
+                                                .Where(item => item.CategoryId == order.DiscountCategory.CategoriesId)
+                                                .Sum(item => item.Quantity * item.UnitPrice);
+
+                    double categoryDiscountValue;
+                    if (order.DiscountCategory.DiscountType == DiscountType.Percentage)
                     {
-                        if (item.CategoryId == order.DiscountCategory.CategoriesId)
-                        {
-                            categoryitemsPrice += item.Quantity * item.UnitPrice;
-                        }
+                        categoryDiscountValue = categoryitemsPrice * (order.DiscountCategory.DiscountAmount / 100.0);
+                    }
+                    else
+                    {
+                        categoryDiscountValue = order.DiscountCategory.DiscountAmount;
                     }
 
-                    double categoryDiscountValue = categoryitemsPrice * (order.DiscountCategory.DiscountPercentage / 100.0);
+                    categoryDiscountValue = Math.Min(categoryDiscountValue, categoryitemsPrice);
 
-                    double originalTotal = order.TotalPrice + categoryDiscountValue;
+                    double originalTotal = order.OrderItems.Sum(x => x.Quantity * x.UnitPrice);
                     // get category name
                     Categories? categories = _context.Categories.FirstOrDefault(c => c.Id == (order.DiscountCategory != null ? order.DiscountCategory.CategoriesId : 0));
                     string categoryName = null!;
@@ -132,7 +140,7 @@ namespace WAHShopBackend.EmailF
                         "Preis vor Rabatt: <strong>" + originalTotal.ToString("C", culture) + "</strong><br>" +
                         "Rabattkategorie: <strong>" + categoryName + "</strong><br>" +
                         "Rabattbetrag: <strong>" + categoryDiscountValue.ToString("C", culture) + "</strong><br>" +
-                        $"Rabattprozentsatz : <strong>{order.DiscountCategory?.DiscountPercentage ?? 0}%</strong><br>" +
+                        $"Rabattsatz : <strong>{order.DiscountCategory?.DiscountAmount ?? 0} {valueSymbol}</strong><br>" +
                         "Preis nach Rabatt: <strong>" + order.TotalPrice.ToString("C", culture) + "</strong><br>";
 
                     // versandkosten

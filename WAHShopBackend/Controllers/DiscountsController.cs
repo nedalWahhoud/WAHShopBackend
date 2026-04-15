@@ -97,12 +97,13 @@ namespace WAHShopBackend.Controllers
                     return NotFound(new ValidationResult { Result = false, Message = "Discount code not found." });
                 // Update properties
                 existingDiscountCode.Code = updatedDiscountCode.Code;
-                existingDiscountCode.DiscountPercentage = updatedDiscountCode.DiscountPercentage;
+                existingDiscountCode.DiscountAmount = updatedDiscountCode.DiscountAmount;
                 existingDiscountCode.UsageLimit = updatedDiscountCode.UsageLimit;
                 existingDiscountCode.TimesUsed = updatedDiscountCode.TimesUsed;
                 existingDiscountCode.IsActive = updatedDiscountCode.IsActive;
                 existingDiscountCode.StartDate = updatedDiscountCode.StartDate;
                 existingDiscountCode.EndDate = updatedDiscountCode.EndDate;
+                existingDiscountCode.DiscountType = updatedDiscountCode.DiscountType;
                 int result = await _context.SaveChangesAsync();
                 return Ok(new ValidationResult { Result = result > 0, Message = $"Discount code with ID: {updatedDiscountCode.Id} updated." });
             }
@@ -123,13 +124,14 @@ namespace WAHShopBackend.Controllers
                     return NotFound(new ValidationResult { Result = false, Message = "Discount category not found." });
                 // Update properties
                 existingDiscountCategory.Code = updatedDiscountCategory.Code;
-                existingDiscountCategory.DiscountPercentage = updatedDiscountCategory.DiscountPercentage;
+                existingDiscountCategory.DiscountAmount = updatedDiscountCategory.DiscountAmount;
                 existingDiscountCategory.UsageLimit = updatedDiscountCategory.UsageLimit;
                 existingDiscountCategory.TimesUsed = updatedDiscountCategory.TimesUsed;
                 existingDiscountCategory.IsActive = updatedDiscountCategory.IsActive;
                 existingDiscountCategory.StartDate = updatedDiscountCategory.StartDate;
                 existingDiscountCategory.EndDate = updatedDiscountCategory.EndDate;
                 existingDiscountCategory.CategoriesId = updatedDiscountCategory.CategoriesId;
+                existingDiscountCategory.DiscountType = updatedDiscountCategory.DiscountType;
                 int result = await _context.SaveChangesAsync();
                 return Ok(new ValidationResult { Result = result > 0, Message = $"Discount category with ID: {updatedDiscountCategory.Id} updated." });
             }
