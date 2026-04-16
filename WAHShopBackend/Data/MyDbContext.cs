@@ -12,7 +12,7 @@ namespace WAHShopBackend.Data
         public DbSet<ProductImages> ProductImages { get; set; }
         public DbSet<ProductDiscounts> ProductDiscounts { get; set; }
         public DbSet<Categories> Categories { get; set; }
-        public DbSet<Manufacturers> Manufacturers { get; set; }
+        public DbSet<Suppliers> Suppliers { get; set; }
         public DbSet<Address> Addresses { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderStatus> OrderStatus { get; set; }

@@ -93,7 +93,7 @@ namespace WAHShopBackend.Controllers
                 var query = _context.Products
             .AsNoTracking()
             .Include(p => p.Category)
-            .Include(p => p.Manufacturer)
+            .Include(p => p.Supplier)
             .Include(p => p.TaxRate)
             .Include(p => p.ProductGroup)
             .Include(p => p.ProductImages)
@@ -130,7 +130,7 @@ namespace WAHShopBackend.Controllers
             {
                 var products = await _context.Products
                     .Include(p => p.Category)
-                    .Include(p => p.Manufacturer)
+                    .Include(p => p.Supplier)
                     .Include(p => p.TaxRate)
                     .Include(p => p.ProductGroup)
                     .Include(p => p.ProductImages)
@@ -170,7 +170,7 @@ namespace WAHShopBackend.Controllers
             {
                 var query = _context.Products
                     .Include(p => p.Category)
-                    .Include(p => p.Manufacturer)
+                    .Include(p => p.Supplier)
                     .Include(p => p.TaxRate)
                     .Include(p => p.ProductGroup)
                     .Include(p => p.ProductImages)
@@ -217,7 +217,7 @@ namespace WAHShopBackend.Controllers
             {
                 var query = _context.Products
                             .Include(p => p.Category)
-                            .Include(p => p.Manufacturer)
+                            .Include(p => p.Supplier)
                             .Include(p => p.TaxRate)
                             .Include(p => p.ProductGroup)
                             .Include(p => p.ProductImages)
@@ -257,15 +257,15 @@ namespace WAHShopBackend.Controllers
             }
         }
         [HttpGet("getManufacturers")]
-        public async Task<ActionResult<GetItems<Manufacturers>>> GetManufacturers()
+        public async Task<ActionResult<GetItems<Suppliers>>> GetManufacturers()
         {
             try
             {
-                var manufacturers = await _context.Manufacturers
+                var manufacturers = await _context.Suppliers
                     .AsNoTracking()
                     .ToListAsync();
 
-                var getItems = new GetItems<Manufacturers>
+                var getItems = new GetItems<Suppliers>
                 {
                     Items = manufacturers,
                     AllItemsLoaded = true

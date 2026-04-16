@@ -170,7 +170,7 @@ namespace WAHShopBackend.Controllers
 
                 var products = await baseQuery
                     .Include(p => p.Category)
-                    .Include(p => p.Manufacturer)
+                    .Include(p => p.Supplier)
                     .Include(p => p.TaxRate)
                     .Include(p => p.ProductGroup)
                     .Include(p => p.ProductImages)

@@ -1,9 +1,9 @@
 ﻿namespace WAHShopBackend.Models
 {
-    public class Manufacturers
+    public class Suppliers
     {
         public int Id { get; set; }
-        public string? Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         public string? Street { get; set; }
         public string? HNumber { get; set; }
         public string? PostalCode { get; set; }

@@ -16,8 +16,8 @@ namespace WAHShopBackend.Models
         public double SalePrice { get; set; }
         public int MinimumStock { get; set; }
         public DateTime EXPDate { get; set; }
-        public int ManufacturerId { get; set; }
-        public Manufacturers? Manufacturer { get; set; }
+        public int SupplierId { get; set; }
+        public Suppliers? Supplier { get; set; }
         public int UserId { get; set; }
         public ICollection<ProductImages> ProductImages { get; set; } = [];
         public string? Name_ar { get; set; }
