@@ -73,7 +73,7 @@ namespace WAHShopBackend.Controllers
                                 _carouselImagesService.DeleteImage(carouselImage.Id);
                                 return StatusCode(500, new ValidationResult { Result = false, Message = "Das carouselImage wurde hinzugefügt (aber wieder gelöscht), das Bild konnte nicht in der Datenbank gespeichert werden." });
                             }
-                            return Ok(new ValidationResult { Result = true, Message = $"Id:{carouselImage.Id}" });
+                            return Ok(new ValidationResult { Result = true, NewId = carouselImage.Id});
                         }
                         else
                         {
@@ -129,6 +129,10 @@ namespace WAHShopBackend.Controllers
                 {
                     return NotFound(new ValidationResult { Result = false, Message = "Carousel image nicht gefunden." });
                 }
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return StatusCode(409, new ValidationResult { Result = false, Message = "Der Lieferant wurde von einem anderen Prozess aktualisiert. Bitte laden Sie die Daten erneut und versuchen Sie es erneut." });
             }
             catch (Exception ex)
             {

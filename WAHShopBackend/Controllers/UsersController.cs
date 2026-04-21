@@ -290,9 +290,13 @@ namespace WAHShopBackend.Controllers
                     return BadRequest(new ValidationResult { Result = false, Message = "könnte nicht in die Databank updaten" }); 
                 }
             }
-            catch (DbUpdateException)
+            catch (DbUpdateConcurrencyException)
             {
-                return StatusCode(500, new ValidationResult { Result = false, Message = "Internal server error" });
+                return StatusCode(409, new ValidationResult { Result = false, Message = "Der Lieferant wurde von einem anderen Prozess aktualisiert. Bitte laden Sie die Daten erneut und versuchen Sie es erneut." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
         [HttpPost("addGuest")]

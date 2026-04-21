@@ -12,15 +12,17 @@ namespace WAHShopBackend.Controllers
         [HttpPost("createCategory")]
         public async Task<IActionResult> CreateCategory([FromBody] Categories category)
         {
-            if (category == null) {
+            if (category == null) 
                 return BadRequest(new ValidationResult { Result = false, Message = "Category data is null" });
-            }
 
             try
             {
                 _context.Categories.Add(category);
-                await _context.SaveChangesAsync();
-                return Ok(new ValidationResult { Result = true, Message = $"Category created successfully, Id:{category.Id}." });
+                int result = await _context.SaveChangesAsync();
+                if(result > 0)
+                    return Ok(new ValidationResult { Result = true, NewId = category.Id });
+                else
+                    return StatusCode(500, new ValidationResult { Result = false, Message = "Kategorie konnte nicht erstellt werden" });
             }
             catch (Exception ex)
             {
@@ -52,6 +54,10 @@ namespace WAHShopBackend.Controllers
                 {
                     return StatusCode(500, new ValidationResult { Result = false, Message = "Category-Aktualisierung fehlgeschlagen" });
                 }
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return StatusCode(409, new ValidationResult { Result = false, Message = "Der Lieferant wurde von einem anderen Prozess aktualisiert. Bitte laden Sie die Daten erneut und versuchen Sie es erneut." });
             }
             catch (Exception ex)
             {
@@ -170,7 +176,7 @@ namespace WAHShopBackend.Controllers
 
                 var products = await baseQuery
                     .Include(p => p.Category)
-                    .Include(p => p.Supplier)
+                    .Include(p => p.Suppliers)
                     .Include(p => p.TaxRate)
                     .Include(p => p.ProductGroup)
                     .Include(p => p.ProductImages)

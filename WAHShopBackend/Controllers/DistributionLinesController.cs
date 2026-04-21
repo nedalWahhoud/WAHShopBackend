@@ -52,17 +52,16 @@ namespace WAHShopBackend.Controllers
         public async Task<IActionResult> AddDistributionLines([FromBody] DistributionLines distributionLines)
         {
             if (distributionLines == null)
-            {
                 return BadRequest(new ValidationResult { Result = false, Message = "DistributionLines data ist null" });
-            }
+
             try
             {
                 _context.DistributionLines.Add(distributionLines);
                 var result = await _context.SaveChangesAsync();
-                if (result <= 0)
+                if (result > 0)
+                    return Ok(new ValidationResult { Result = true, NewId = distributionLines.Id });
+                else
                     return StatusCode(500, new ValidationResult { Result = false, Message = "Die Erstellung der Verteilungslinien ist fehlgeschlagen." });
-
-                return Ok(new ValidationResult { Result = true, Message = $"Verteilungslinien erfolgreich erstellt, Id:{distributionLines.Id}." });
             }
             catch (Exception ex)
             {
@@ -93,6 +92,10 @@ namespace WAHShopBackend.Controllers
                 {
                     return StatusCode(500, new ValidationResult { Result = false, Message = "Die Aktualisierung der Verteilungslinien ist fehlgeschlagen." });
                 }
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return StatusCode(409, new ValidationResult { Result = false, Message = "Der Lieferant wurde von einem anderen Prozess aktualisiert. Bitte laden Sie die Daten erneut und versuchen Sie es erneut." });
             }
             catch (Exception ex)
             {

@@ -73,9 +73,27 @@ namespace WAHShopBackend.Data
            .WithOne(c => c.Customer)
            .HasForeignKey(t => t.CustomerId)
            .OnDelete(DeleteBehavior.Cascade);
+            // many to many ProductSuppliers
+            modelBuilder.Entity<Product>()
+           .HasMany(p => p.Suppliers)
+           .WithMany(s => s.Products)
+           .UsingEntity<Dictionary<string, object>>(
+              "ProductSuppliers", // اسم الجدول في قاعدة البيانات
+              j => j
+                  .HasOne<Suppliers>()
+                  .WithMany()
+                  .HasForeignKey("SupplierID")
+                  .OnDelete(DeleteBehavior.Cascade), 
+              j => j
+                  .HasOne<Product>()
+                  .WithMany()
+                  .HasForeignKey("ProductID")
+                  .OnDelete(DeleteBehavior.Cascade)  
+            );
+
             /* User */
             modelBuilder.Entity<UserPermission>()
-           .HasKey(up => new { up.UserId, up.PermissionId });
+                .HasKey(up => new { up.UserId, up.PermissionId });
 
             modelBuilder.Entity<UserPermission>()
                 .HasOne(up => up.User)

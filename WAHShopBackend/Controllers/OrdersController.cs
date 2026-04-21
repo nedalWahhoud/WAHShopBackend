@@ -368,6 +368,10 @@ namespace WAHShopBackend.Controllers
                 return Ok(new ValidationResult { Result = result > 0, Message = $"Order status updated successfully for Order ID: {orderId}" });
 
             }
+            catch (DbUpdateConcurrencyException)
+            {
+                return StatusCode(409, new ValidationResult { Result = false, Message = "Der Lieferant wurde von einem anderen Prozess aktualisiert. Bitte laden Sie die Daten erneut und versuchen Sie es erneut." });
+            }
             catch (Exception ex)
             {
                 return StatusCode(500, new ValidationResult() { Result = false, Message = $"An error occurred while updating the order status: {ex.Message}" });

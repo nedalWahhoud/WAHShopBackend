@@ -89,6 +89,10 @@ namespace WAHShopBackend.Controllers
                 int result = await _context.SaveChangesAsync();
                 return Ok(new ValidationResult { Result = result > 0, Message = $"Address with ID {address.Id} updated successfully." });
             }
+            catch (DbUpdateConcurrencyException)
+            {
+                return StatusCode(409, new ValidationResult { Result = false, Message = "Der Lieferant wurde von einem anderen Prozess aktualisiert. Bitte laden Sie die Daten erneut und versuchen Sie es erneut." });
+            }
             catch (Exception ex)
             {
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });

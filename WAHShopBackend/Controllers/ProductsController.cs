@@ -21,6 +21,15 @@ namespace WAHShopBackend.Controllers
 
             try
             {
+
+                if (newProduct.SelectedSupplierIds != null && newProduct.SelectedSupplierIds.Count != 0)
+                {
+                    
+                    newProduct.Suppliers = await _context.Suppliers
+                        .Where(s => newProduct.SelectedSupplierIds.Contains(s.Id))
+                        .ToListAsync();
+                }
+
                 _context.Products.Add(newProduct);
                 int result = await _context.SaveChangesAsync();
                 if (result > 0)
@@ -93,7 +102,7 @@ namespace WAHShopBackend.Controllers
                 var query = _context.Products
             .AsNoTracking()
             .Include(p => p.Category)
-            .Include(p => p.Supplier)
+            .Include(p => p.Suppliers)
             .Include(p => p.TaxRate)
             .Include(p => p.ProductGroup)
             .Include(p => p.ProductImages)
@@ -130,7 +139,7 @@ namespace WAHShopBackend.Controllers
             {
                 var products = await _context.Products
                     .Include(p => p.Category)
-                    .Include(p => p.Supplier)
+                    .Include(p => p.Suppliers)
                     .Include(p => p.TaxRate)
                     .Include(p => p.ProductGroup)
                     .Include(p => p.ProductImages)
@@ -170,7 +179,7 @@ namespace WAHShopBackend.Controllers
             {
                 var query = _context.Products
                     .Include(p => p.Category)
-                    .Include(p => p.Supplier)
+                    .Include(p => p.Suppliers)
                     .Include(p => p.TaxRate)
                     .Include(p => p.ProductGroup)
                     .Include(p => p.ProductImages)
@@ -217,7 +226,7 @@ namespace WAHShopBackend.Controllers
             {
                 var query = _context.Products
                             .Include(p => p.Category)
-                            .Include(p => p.Supplier)
+                            .Include(p => p.Suppliers)
                             .Include(p => p.TaxRate)
                             .Include(p => p.ProductGroup)
                             .Include(p => p.ProductImages)
@@ -256,26 +265,75 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, null!);
             }
         }
-        [HttpGet("getManufacturers")]
-        public async Task<ActionResult<GetItems<Suppliers>>> GetManufacturers()
+        [HttpPost("updateProduct")]
+        public async Task<IActionResult> UpdateProduct([FromBody] Product editProduct)
         {
             try
             {
-                var manufacturers = await _context.Suppliers
-                    .AsNoTracking()
-                    .ToListAsync();
+                var existingProduct = await _context.Products
+                    .Include(p => p.Suppliers)
+                    .Include(p => p.ProductImages)
+                    .Include(p => p.ProductDiscount)
+                    .FirstOrDefaultAsync(p => p.Id == editProduct.Id);
 
-                var getItems = new GetItems<Suppliers>
+                if (existingProduct == null)
+                    return StatusCode(404, new ValidationResult { Result = false, Message = "Product nicht gefunden" });
+
+
+                // Aktualisierung der Lieferanten
+                if (editProduct.SelectedSupplierIds != null)
                 {
-                    Items = manufacturers,
-                    AllItemsLoaded = true
-                };
+                    var newSuppliers = await _context.Suppliers
+                        .Where(s => editProduct.SelectedSupplierIds.Contains(s.Id))
+                        .ToListAsync();
+                    
+                    existingProduct.Suppliers = newSuppliers;
+                }
 
-                return Ok(getItems);
+                // productimage
+                if (editProduct.ProductImages != null)
+                {
+                    var resultImage = _productImagesService.EditImage(existingProduct.ProductImages, editProduct.ProductImages);
+                    if (resultImage.Result == false)
+                    {
+                        return StatusCode(500, new ValidationResult { Result = false, Message = "Bildaktualisierung fehlgeschlagen: " + resultImage.Message });
+                    }
+                }
+                // Product Discount 
+                if (editProduct.ProductDiscount != null)
+                {
+                    if (existingProduct.ProductDiscount == null)
+                    {
+                        editProduct.ProductDiscount.ProductsId = existingProduct.Id;
+                        _context.ProductDiscounts.Add(editProduct.ProductDiscount);
+                    }
+                    else
+                    {
+                        _context.Entry(existingProduct.ProductDiscount).CurrentValues.SetValues(editProduct.ProductDiscount);
+                    }
+                }
+
+                //
+                _context.Entry(existingProduct).CurrentValues.SetValues(editProduct);
+                _context.Entry(existingProduct).State = EntityState.Modified;
+                int result = await _context.SaveChangesAsync();
+                if (result > 0)
+                {
+                    return Ok(new ValidationResult { Result = true, Message = "Produkt erfolgreich aktualisiert" });
+                }
+                else
+                {
+                    return StatusCode(500, new ValidationResult { Result = false, Message = "Produktaktualisierung fehlgeschlagen" });
+                }
+
             }
-            catch
+            catch (DbUpdateConcurrencyException)
             {
-                return StatusCode(500, new ValidationResult { Result = false, Message = "Internal server error" });
+                return StatusCode(409, new ValidationResult { Result = false, Message = "Der Lieferant wurde von einem anderen Prozess aktualisiert. Bitte laden Sie die Daten erneut und versuchen Sie es erneut." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
         [HttpGet("getTaxRates")]
@@ -300,68 +358,15 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = "Internal server error" });
             }
         }
-        [HttpPost("updateProduct")]
-        public async Task<IActionResult> UpdateProduct([FromBody] Product editProduct)
-        {
-            try
-            {
-                var existingProduct = await _context.Products
-                    .Include(p => p.ProductImages)
-                    .Include(p => p.ProductDiscount)
-                    .FirstOrDefaultAsync(p => p.Id == editProduct.Id);
-                if (existingProduct != null)
-                {
-                    // productimage
-                    if (editProduct.ProductImages != null)
-                    {
-                        var resultImage = _productImagesService.EditImage(existingProduct.ProductImages, editProduct.ProductImages);
-                        if (resultImage.Result == false)
-                        {
-                            return StatusCode(500, new ValidationResult { Result = false, Message = "Bildaktualisierung fehlgeschlagen: " + resultImage.Message });
-                        }
-                    }
-                    // Product Discount 
-                    if (editProduct.ProductDiscount != null)
-                    {
-                        if (existingProduct.ProductDiscount == null)
-                        {
-                            editProduct.ProductDiscount.ProductsId = existingProduct.Id;
-                            _context.ProductDiscounts.Add(editProduct.ProductDiscount);
-                        }
-                        else
-                        {
-                            _context.Entry(existingProduct.ProductDiscount).CurrentValues.SetValues(editProduct.ProductDiscount);
-                        }
-                    }
-
-                    //
-                    _context.Entry(existingProduct).CurrentValues.SetValues(editProduct);
-                    _context.Entry(existingProduct).State = EntityState.Modified;
-                    int result = await _context.SaveChangesAsync();
-                    if (result > 0)
-                    {
-                        return Ok(new ValidationResult { Result = true, Message = "Produkt erfolgreich aktualisiert" });
-                    }
-                    else
-                    {
-                        return StatusCode(500, new ValidationResult { Result = false, Message = "Produktaktualisierung fehlgeschlagen" });
-                    }
-                }
-                else
-                    return StatusCode(500, new ValidationResult { Result = false, Message = "Product nicht gefunden" });
-
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
-            }
-        }
+        
         [HttpDelete("deleteProduct/{id}")]
         public async Task<IActionResult> DeleteProduct(int id)
         {
             try
             {
-                var existingProduct = await _context.Products.FindAsync(id);
+                var existingProduct = await _context.Products
+                    .Include(p => p.Suppliers)
+                    .FirstOrDefaultAsync(p => p.Id == id);
                 if (existingProduct != null)
                 {
                     _context.Products.Remove(existingProduct);
@@ -402,6 +407,10 @@ namespace WAHShopBackend.Controllers
                     return Ok(new ValidationResult { Result = true, Message = "Erfolg" });
                 else
                     return StatusCode(500, new ValidationResult { Result = false, Message = "Barcode könnte nicht geupdatet werden" });
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return StatusCode(409, new ValidationResult { Result = false, Message = "Der Lieferant wurde von einem anderen Prozess aktualisiert. Bitte laden Sie die Daten erneut und versuchen Sie es erneut." });
             }
             catch (Exception ex)
             {

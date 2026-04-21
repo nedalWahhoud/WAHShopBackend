@@ -66,14 +66,16 @@ namespace WAHShopBackend.Controllers
         public async Task<IActionResult> CreateGroupProduct([FromBody] GroupProducts groupProduct)
         {
             if (groupProduct == null || (string.IsNullOrWhiteSpace(groupProduct.GroupName_de) && string.IsNullOrWhiteSpace(groupProduct.GroupName_ar)))
-            {
                 return BadRequest(new ValidationResult { Result = false, Message = "Ungültige Gruppenproduktdaten." });
-            }
+
             try
             {
                 await _context.GroupProducts.AddAsync(groupProduct);
-                await _context.SaveChangesAsync();
-                return Ok(new ValidationResult { Result = true, Message = $"Gruppenprodukte erfolgreich erstellt, Id:{groupProduct.Id}." });
+                int result = await _context.SaveChangesAsync();
+                if (result > 0)
+                    return Ok(new ValidationResult { Result = true, NewId = groupProduct.Id });
+                else
+                    return StatusCode(500, new ValidationResult { Result = false, Message = "Fehler beim Erstellen der Gruppenprodukte." });
             }
             catch (Exception ex)
             {
@@ -105,6 +107,10 @@ namespace WAHShopBackend.Controllers
                     return StatusCode(500, new ValidationResult { Result = false, Message = "Gruppenprodukte-Aktualisierung fehlgeschlagen" });
                 }
             }
+            catch (DbUpdateConcurrencyException)
+            {
+                return StatusCode(409, new ValidationResult { Result = false, Message = "Der Lieferant wurde von einem anderen Prozess aktualisiert. Bitte laden Sie die Daten erneut und versuchen Sie es erneut." });
+            }
             catch (Exception ex)
             {
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
@@ -125,8 +131,13 @@ namespace WAHShopBackend.Controllers
                     return NotFound(new ValidationResult { Result = false, Message = "Gruppenprodukte nicht gefunden." });
                 }
                 _context.GroupProducts.Remove(groupProduct);
-                await _context.SaveChangesAsync();
-                return Ok(new ValidationResult { Result = true, Message = "Gruppenprodukte erfolgreich gelöscht." });
+                int result = await _context.SaveChangesAsync();
+                if (result > 0)
+                {
+                    return Ok(new ValidationResult { Result = true, Message = "Gruppenprodukte erfolgreich gelöscht." });
+                }
+                else
+                    return StatusCode(500, new ValidationResult { Result = false, Message = "Fehler bei löschen der Gruppenprodukte" } );
             }
             catch (Exception ex)
             {

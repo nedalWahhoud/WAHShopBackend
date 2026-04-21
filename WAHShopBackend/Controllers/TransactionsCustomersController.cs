@@ -117,6 +117,10 @@ namespace WAHShopBackend.Controllers
                 else
                     return StatusCode(500, new ValidationResult { Result = false, Message = "Transaktion konnte nicht aktualisiert werden." });
             }
+            catch (DbUpdateConcurrencyException)
+            {
+                return StatusCode(409, new ValidationResult { Result = false, Message = "Der Lieferant wurde von einem anderen Prozess aktualisiert. Bitte laden Sie die Daten erneut und versuchen Sie es erneut." });
+            }
             catch (Exception ex)
             {
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
