@@ -132,32 +132,53 @@ namespace WAHShopBackend.Controllers
         {
             GetItems<Product> getItems = new();
 
-            if (_getItems.AllItemsLoaded) 
-                return Ok(getItems = new GetItems<Product> {Items = [],AllItemsLoaded = true});
+            if (_getItems.AllItemsLoaded)
+                return Ok(getItems = new GetItems<Product> { Items = [], AllItemsLoaded = true });
 
             try
             {
-                var products = await _context.Products
+                var query = _context.Products
+                    .AsNoTracking()
                     .Include(p => p.Category)
                     .Include(p => p.Suppliers)
                     .Include(p => p.TaxRate)
                     .Include(p => p.ProductGroup)
                     .Include(p => p.ProductImages)
                     .Include(p => p.ProductDiscount)
-                    .OrderByDescending(p => p.Id)
+                    .AsSplitQuery();
+
+                int filterId = _getItems.Filter?.Id ?? 0;
+                if (_getItems.Filter != null && _getItems.Filter.Type != GetItemFilterType.None)
+                {
+                    query = _getItems.Filter.Type switch
+                    {
+                        GetItemFilterType.Category => query.Where(p => p.CategoryId == filterId),
+                        GetItemFilterType.LowStock => query.Where(p => p.Quantity <= p.MinimumStock),
+                        GetItemFilterType.OnOffer => query.Where(p => p.ProductDiscount != null &&
+                                       p.ProductDiscount.DiscountedPrice > 0 &&
+                                       DateTime.Today >= p.ProductDiscount.StartDate &&
+                                       DateTime.Today <= p.ProductDiscount.EndDate),
+                        _ => query
+                    };
+                }
+
+                var products = await query
+                    .OrderBy(p => p.Name_de)
                     .Skip(_getItems.CurrentPage * _getItems.PageSize)
                     .Take(_getItems.PageSize)
-                    .OrderBy(p => p.Name_de)
                     .ToListAsync();
 
-                if (products.Count == 0)
+                var totalCount = await query.CountAsync();
+                var loadedCount = (_getItems.CurrentPage * _getItems.PageSize) + products.Count;
+                if (loadedCount >= totalCount)
                 {
                     getItems.AllItemsLoaded = true;
                 }
 
+
                 _getItems.CurrentPage++;
                 getItems.Items = products;
-
+                getItems.PageSize = _getItems.PageSize;
                 getItems.CurrentPage = _getItems.CurrentPage;
 
                 return Ok(getItems);
@@ -167,104 +188,7 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
-        [HttpGet("getProductsLowStock")]
-        public async Task<IActionResult> GetProductsLowStock([FromQuery] GetItems<Product> _getItems, [FromQuery] List<int>? excludeProductsIds = null)
-        {
-            GetItems<Product> getItems = new();
-
-            if (_getItems.AllItemsLoaded)
-                return Ok(getItems = new GetItems<Product> { Items = [], AllItemsLoaded = true });
-
-            try
-            {
-                var query = _context.Products
-                    .Include(p => p.Category)
-                    .Include(p => p.Suppliers)
-                    .Include(p => p.TaxRate)
-                    .Include(p => p.ProductGroup)
-                    .Include(p => p.ProductImages)
-                    .Include(p => p.ProductDiscount)
-                    .Where(p => p.Quantity <= p.MinimumStock);
-
-                if(excludeProductsIds != null && excludeProductsIds.Count > 0)
-                {
-                    query = query.Where(p => !excludeProductsIds.Contains(p.Id));
-                }
-
-                var products = await query
-                    .Skip(_getItems.CurrentPage * _getItems.PageSize)
-                    .Take(_getItems.PageSize)
-                    .ToListAsync();
-
-                var totalCount = await query.CountAsync();
-                var loadedCount = (_getItems.CurrentPage * _getItems.PageSize) + products.Count;
-                if (loadedCount >= totalCount)
-                {
-                    getItems.AllItemsLoaded = true;
-                }
-
-                _getItems.CurrentPage++;
-                getItems.Items = products;
-                getItems.PageSize = _getItems.PageSize;
-                getItems.CurrentPage = _getItems.CurrentPage;
-
-                return Ok(getItems);
-            }
-            catch 
-            {
-                return StatusCode(500, null!);
-            }
-        }
-        [HttpGet("getProductsOnOffer")]
-        public async Task<IActionResult> GetProductsOnOffer([FromQuery] GetItems<Product> _getItems, [FromQuery] List<int>? excludeProductsIds = null)
-        {
-            GetItems<Product> getItems = new();
-
-            if (_getItems.AllItemsLoaded)
-                return Ok(getItems = new GetItems<Product> { Items = [], AllItemsLoaded = true });
-            try
-            {
-                var query = _context.Products
-                            .Include(p => p.Category)
-                            .Include(p => p.Suppliers)
-                            .Include(p => p.TaxRate)
-                            .Include(p => p.ProductGroup)
-                            .Include(p => p.ProductImages)
-                            .Include(p => p.ProductDiscount)
-                           .Where(p => p.ProductDiscount != null && 
-                                       p.ProductDiscount.DiscountedPrice > 0 &&
-                                       DateTime.Today >= p.ProductDiscount.StartDate && 
-                                       DateTime.Today <= p.ProductDiscount.EndDate);
-
-                if (excludeProductsIds != null && excludeProductsIds.Count > 0)
-                {
-                    query = query.Where(p => !excludeProductsIds.Contains(p.Id));
-                }
-
-                var products = await query
-                    .Skip(_getItems.CurrentPage * _getItems.PageSize)
-                    .Take(_getItems.PageSize)
-                    .ToListAsync();
-
-                var totalCount = await query.CountAsync();
-                var loadedCount = (_getItems.CurrentPage * _getItems.PageSize) + products.Count;
-                if (loadedCount >= totalCount)
-                {
-                    getItems.AllItemsLoaded = true;
-                }
-
-                _getItems.CurrentPage++;
-                getItems.Items = products;
-                getItems.PageSize = _getItems.PageSize;
-                getItems.CurrentPage = _getItems.CurrentPage;
-
-                return Ok(getItems);
-            }
-            catch
-            {
-                return StatusCode(500, null!);
-            }
-        }
+        
         [HttpPost("updateProduct")]
         public async Task<IActionResult> UpdateProduct([FromBody] Product editProduct)
         {

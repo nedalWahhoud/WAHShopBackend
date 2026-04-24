@@ -86,7 +86,7 @@ namespace WAHShopBackend.Controllers
                     if (result > 0)
                         return Ok(new ValidationResult { Result = true, Message = "Lieferant erfolgreich aktualisiert." });
                     else
-                        return StatusCode(500, new ValidationResult { Result = false, Message = "Fehler beim Aktualisieren des Lieferanten" }); await _context.SaveChangesAsync();
+                        return StatusCode(500, new ValidationResult { Result = false, Message = "Fehler beim Aktualisieren des Lieferanten" }); 
                 }
                 else
                     return Ok(new ValidationResult { Result = true, Message = "Keine Änderungen am Lieferanten festgestellt." });

@@ -18,17 +18,17 @@ namespace WAHShopBackend.Controllers
             GetItems<TransactionsCustomers> getItems = new ();
             try
             {
+                int filterId = _getItems.Filter?.Id ?? 0;
+
                 var transactions = await _context.TransactionsCustomers
-                    .Where(t => t.CustomerId == _getItems.Id)
+                    .Where(t => t.CustomerId == filterId)
                     .OrderByDescending(t => t.TransactionDate)
                     .Skip(_getItems.CurrentPage * _getItems.PageSize)
                     .Take(_getItems.PageSize)
                     .ToListAsync();
 
                 if (transactions.Count == 0)
-                {
                     getItems.AllItemsLoaded = true;
-                }
 
                 _getItems.CurrentPage++;
 
