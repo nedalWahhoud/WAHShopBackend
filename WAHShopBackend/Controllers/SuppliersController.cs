@@ -32,6 +32,25 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = "Internal server error" });
             }
         }
+        [HttpGet("getSupplierById/{supplierId}")]
+        public async Task <IActionResult> GetSupplierById(int supplierId)
+        {
+            if (supplierId <= 0)
+                return BadRequest(new ValidationResult { Result = false, Message = "Ungültige Lieferant-Id" });
+            try
+            {
+                var supplier = await _context.Suppliers
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.Id == supplierId);
+                if (supplier == null)
+                    return NotFound(new ValidationResult { Result = false, Message = "Lieferant nicht gefunden." });
+                return Ok(supplier);
+            }
+            catch(Exception ex)
+            {
+                return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
+            }
+        }
         [HttpPost("addSupplier")]
         public async Task<IActionResult> AddSupplier(Suppliers supplier)
         {

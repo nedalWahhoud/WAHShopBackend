@@ -153,6 +153,7 @@ namespace WAHShopBackend.Controllers
                     query = _getItems.Filter.Type switch
                     {
                         GetItemFilterType.Category => query.Where(p => p.CategoryId == filterId),
+                        GetItemFilterType.Supplier => query.Where(p => p.Suppliers.Any(s => s.Id == filterId)),
                         GetItemFilterType.LowStock => query.Where(p => p.Quantity <= p.MinimumStock),
                         GetItemFilterType.OnOffer => query.Where(p => p.ProductDiscount != null &&
                                        p.ProductDiscount.DiscountedPrice > 0 &&
