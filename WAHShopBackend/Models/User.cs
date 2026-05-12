@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using System.Text.Json.Serialization;
 
 namespace WAHShopBackend.Models
 {
@@ -16,6 +17,7 @@ namespace WAHShopBackend.Models
         public DateTime CreatedAt { get; set; }
 
         public List<UserPermission> UserPermissions { get; set; } = [];
+        [JsonIgnore]
         public ICollection<Order> Orders { get; set; } = [];
     }
 }

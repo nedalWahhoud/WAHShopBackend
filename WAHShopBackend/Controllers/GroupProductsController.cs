@@ -45,6 +45,7 @@ namespace WAHShopBackend.Controllers
                 var products = await _context.Products
                     .Where(p => p.ProductGroupID == groupProductsId && !excludeProductsIds.Contains(p.Id) &&
                     p.Quantity > 0)
+                    .Include(p => p.ProductGroup)
                     .Include(p => p.ProductImages)
                     .ToListAsync();
                 if (products == null || products.Count == 0)
@@ -56,6 +57,27 @@ namespace WAHShopBackend.Controllers
 
 
                 return Ok(getItems);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
+            }
+        }
+        [HttpGet("getGroupProductById/{groupProductsId}")]
+        public async Task<IActionResult> GetGroupProductById(int groupProductsId)
+        {
+            if (groupProductsId <= 0)
+            {
+                return BadRequest(new ValidationResult { Result = false, Message = "Ungültige Gruppenprodukt-ID." });
+            }
+            try
+            {
+                var groupProduct = await _context.GroupProducts.FindAsync(groupProductsId);
+                if (groupProduct == null)
+                {
+                    return NotFound(new ValidationResult { Result = false, Message = "Gruppenprodukt nicht gefunden." });
+                }
+                return Ok(groupProduct);
             }
             catch (Exception ex)
             {
