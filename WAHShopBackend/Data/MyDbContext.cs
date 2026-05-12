@@ -36,16 +36,23 @@ namespace WAHShopBackend.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            // cascade delete all orders when user deleted
+            modelBuilder.Entity<Order>()
+             .HasOne(o => o.User)
+             .WithMany(u => u.Orders)
+             .HasForeignKey(o => o.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+
             // cascade Product delete ProductImages
             modelBuilder.Entity<Product>()
                .HasMany(p => p.ProductImages)
                .WithOne(pi => pi.Product)
                .HasForeignKey(pi => pi.ProductId)
                .OnDelete(DeleteBehavior.Cascade);
-            // cascade Order delete OrderItems
-            modelBuilder.Entity<Order>()
-                .HasMany(o => o.OrderItems)
-                .WithOne(oi => oi.Order)
+            // cascade delete OrderItems wenn order gelöscht 
+            modelBuilder.Entity<OrderItems>()
+                .HasOne(oi => oi.Order)
+                .WithMany(o => o.OrderItems)
                 .HasForeignKey(oi => oi.OrderId)
                 .OnDelete(DeleteBehavior.Cascade);
             // cascade Product delete ProductDiscount

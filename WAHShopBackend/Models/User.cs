@@ -16,5 +16,6 @@ namespace WAHShopBackend.Models
         public DateTime CreatedAt { get; set; }
 
         public List<UserPermission> UserPermissions { get; set; } = [];
+        public ICollection<Order> Orders { get; set; } = [];
     }
 }

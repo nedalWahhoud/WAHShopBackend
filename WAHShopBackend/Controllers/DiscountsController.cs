@@ -168,13 +168,13 @@ namespace WAHShopBackend.Controllers
                 if (discountCode == null)
                     return NotFound(new ValidationResult { Result = false, Message = "Rabattcode nicht gefunden oder inaktiv." });
 
-                var isAlreadyUsedByUser = await _context.UsedDiscountCodes
-                    .AnyAsync(u => u.UserId == userId && u.DiscountCodeId == discountCode.Id);
-
-                if (isAlreadyUsedByUser)
+                if (userId < 0)
                 {
-                    return BadRequest(new ValidationResult { Result = false, Message = "Sie haben diesen Code bereits einmal verwendet"}); }
+                    var isAlreadyUsedByUser = await _context.UsedDiscountCodes
+                        .AnyAsync(u => u.UserId == userId && u.DiscountCodeId == discountCode.Id);
 
+                    if (isAlreadyUsedByUser) return BadRequest(new ValidationResult { Result = false, Message = "Sie haben diesen Code bereits einmal verwendet" });
+                }
                 return Ok(discountCode);
             }
             catch (Exception ex)

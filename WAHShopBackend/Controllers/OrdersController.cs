@@ -78,12 +78,12 @@ namespace WAHShopBackend.Controllers
                             if (savedOrder != null)
                             {
                                 // send order confirmation email
-                                _ = _emailService.OrderConfirmation(savedOrder);
+                                await _emailService.OrderConfirmation(savedOrder);
                                 // schicken  eine Benachrichtigung an den Administrator
                                 string subject = $"Neue Bestellung eingegangen - Bestellnummer {savedOrder.Id}";
                                 string body = $"Eine neue Bestellung wurde aufgegeben. Bestellnummer: {savedOrder.Id}<br>"+
                                     $"BezahlungsMethod: <strong>{savedOrder.PaymentMethod?.Description_de ?? "Fehler bei PaymentMethod Abholung"}</strong>";
-                                _ = _emailService.SendEmailAsync(_projectInfo.Value.Email!, subject, body);
+                                await _emailService.SendEmailAsync(_projectInfo.Value.Email!, subject, body);
                                 // eine Nachricht zu telegrambot senden
                                 string telegramMessage = $"Neue Bestellung eingegangen - Bestellnummer {savedOrder.Id}\n" +
                                     $"BezahlungsMethod: {savedOrder.PaymentMethod?.Description_de ?? "Fehler bei PaymentMethod Abholung"}";
@@ -362,7 +362,7 @@ namespace WAHShopBackend.Controllers
                     // send email notification if user email is set
                     if (order.User != null && !string.IsNullOrWhiteSpace(order.User.Email))
                     {
-                        _ = _emailService.OrderStatusChanged(order);
+                        await _emailService.OrderStatusChanged(order);
                     }
                 }
                 return Ok(new ValidationResult { Result = result > 0, Message = $"Order status updated successfully for Order ID: {orderId}" });
