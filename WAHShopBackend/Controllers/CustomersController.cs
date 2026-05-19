@@ -115,10 +115,17 @@ namespace WAHShopBackend.Controllers
                 {
                     using var transaction = await _context.Database.BeginTransactionAsync();
                     // wenn nötig bearbeiten die stopnumber
-                    if (customer.shouldStopnummerShift)
-                        await ShiftStopNumbersAsync(customer.DistributionLineId, customer.StopNumber, existingCustomer.StopNumber,customer.Id);
+                    int newStopNumber = await ShiftStopNumbersAsync(customer.DistributionLineId, customer.StopNumber, existingCustomer.StopNumber, customer.Id,false, customer.shouldStopnummerShift);
+
+                  
 
                     _context.Entry(existingCustomer).CurrentValues.SetValues(customer);
+
+
+                    // wenn die newStopNumber nicht -1 ist, bedeutet dass die newStopnumber von dem Kunden in FUnktion ShiftStopNumbersAsync geändert wurde, und muss die Änderung umgesetzt werden.
+                    if (newStopNumber != -1)
+                        existingCustomer.StopNumber = newStopNumber;
+
                     int result = await _context.SaveChangesAsync();
                     if (result > 0)
                     {
@@ -142,76 +149,59 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
-        private async Task ShiftStopNumbersAsync(int distributionLineId,int newStopNumber,int? oldStopNumber,int currentCustomerId = 0, bool isDelete = false)
+        private async Task<int> ShiftStopNumbersAsync(int distributionLineId, int newStopNumber, int? oldStopNumber, int currentCustomerId = 0, bool isDelete = false, bool shouldStopnummerShift = true)
         {
+
+            /* -1 bdeuetet dass die newStopNumber nix geändert und muss nixht angefasst werden */
+
             // prüfen ob die Stelle noch belegt ist 
             bool isStopStillOccupied = await _context.Customers
                    .AnyAsync(c => c.DistributionLineId == distributionLineId && c.StopNumber == oldStopNumber && c.Id != currentCustomerId);
-            // löschen
-            if (isDelete)
-            {
-                // wenn  die Haltestelle noch belegt ist, tun wir nichts, da muss keine Verschiebung stattfinden, weil die Lücke nicht geschlossen werden muss.
-                if (isStopStillOccupied)
-                    return;
 
-                var customersToShift = await _context.Customers
-                .Where(c =>
-                    c.DistributionLineId == distributionLineId &&
-                    c.StopNumber > oldStopNumber)
-                .OrderBy(c => c.StopNumber)
-                .ToListAsync();
-                foreach (var c in customersToShift)
-                    c.StopNumber -= 1;
-                return;
-            }
-
-            // update
-            // Neuer Erstellungsstatus (oldStopNumber == -1)
-            if (oldStopNumber == -1)
+            if (shouldStopnummerShift)
             {
-                var customersToShift = await _context.Customers
+                // löschen
+                if (isDelete)
+                {
+                    // wenn  die Haltestelle noch belegt ist, tun wir nichts, da muss keine Verschiebung stattfinden, weil die Lücke nicht geschlossen werden muss.
+                    if (isStopStillOccupied)
+                        return -1;
+
+                    var customersToShift = await _context.Customers
                     .Where(c =>
                         c.DistributionLineId == distributionLineId &&
-                        c.StopNumber >= newStopNumber)
-                    .OrderByDescending(c => c.StopNumber)
+                        c.StopNumber > oldStopNumber)
+                    .OrderBy(c => c.StopNumber)
                     .ToListAsync();
+                    foreach (var c in customersToShift)
+                        c.StopNumber -= 1;
+                    return -1;
+                }
 
-                foreach (var c in customersToShift)
-                    c.StopNumber += 1;
-            }
-            else
-            {
-
-                // Wenn sich die Zahl nicht ändert, tun wir nichts.
-                if (oldStopNumber == newStopNumber)
-                    return;
-
-                // Erster Fall: Wechsel zu einem kleineren Punkt (z. B. von 5 auf 2)
-                if (newStopNumber < oldStopNumber)
+                // update
+                // Neuer Erstellungsstatus (oldStopNumber == -1)
+                if (oldStopNumber == -1)
                 {
-                    // Im Falle des Abstiegs, unabhängig davon, ob der vorherige Punkt belegt oder frei ist:
-
-                    // Wir möchten zwischen dem neuen Punkt (2) und dem vorherigen Punkt (4) Platz schaffen, sodass sie zu (3 bis 5) werden.
                     var customersToShift = await _context.Customers
-                        .Where(c => c.DistributionLineId == distributionLineId &&
-                                    c.StopNumber >= newStopNumber &&
-                                    c.StopNumber < oldStopNumber)
-                        .OrderByDescending(c => c.StopNumber)// Die absteigende Reihenfolge ist beim Erhöhen (+1) zwingend erforderlich, um Änderungeninterferenzen zu vermeiden.
+                        .Where(c =>
+                            c.DistributionLineId == distributionLineId &&
+                            c.StopNumber >= newStopNumber)
+                        .OrderByDescending(c => c.StopNumber)
                         .ToListAsync();
 
                     foreach (var c in customersToShift)
-                    {
                         c.StopNumber += 1;
-                    }
                 }
-                // Zweiter Fall: Wechsel zu einem größeren Punkt (z. B. von 2 auf 5)
-                else if (newStopNumber > oldStopNumber)
+                else
                 {
+
+                    // Wenn sich die Zahl nicht ändert, tun wir nichts.
+                    if (oldStopNumber == newStopNumber)
+                        return -1;
+
+                    // Wenn die neue Stopnummer bereits von einem anderen Kunden belegt ist, müssen wir die Kunden ab der neuen Stopnummer um 1 nach oben verschieben, um Platz für den aktualisierten Kunden zu schaffen.
                     if (isStopStillOccupied)
                     {
-                        // Lösung Ihres Problems: Punkt 2 ist noch belegt, daher müssen wir keine Kunden von Punkt 3 dorthin verlagern.
-
-                        // Wir schaffen einfach Platz ab dem neuen Punkt 5.
                         var customersToShiftUp = await _context.Customers
                             .Where(c => c.DistributionLineId == distributionLineId &&
                                         c.StopNumber >= newStopNumber)
@@ -222,10 +212,29 @@ namespace WAHShopBackend.Controllers
                         {
                             c.StopNumber += 1;
                         }
+                        return -1;
                     }
-                    else
+
+                    // Erster Fall: Wechsel zu einem kleineren Punkt (z. B. von 5 auf 2)
+                    if (newStopNumber < oldStopNumber)
                     {
-                      
+
+                        // Wir möchten zwischen dem neuen Punkt (2) und dem vorherigen Punkt (4) Platz schaffen, sodass sie zu (3 bis 5) werden.
+                        var customersToShift = await _context.Customers
+                            .Where(c => c.DistributionLineId == distributionLineId &&
+                                        c.StopNumber >= newStopNumber &&
+                                        c.StopNumber < oldStopNumber)
+                            .OrderByDescending(c => c.StopNumber)// Die absteigende Reihenfolge ist beim Erhöhen (+1) zwingend erforderlich, um Änderungeninterferenzen zu vermeiden.
+                            .ToListAsync();
+
+                        foreach (var c in customersToShift)
+                        {
+                            c.StopNumber += 1;
+                        }
+                    }
+                    // Zweiter Fall: Wechsel zu einem größeren Punkt (z. B. von 2 auf 5)
+                    else if (newStopNumber > oldStopNumber)
+                    {
                         var customersToShift = await _context.Customers
                             .Where(c => c.DistributionLineId == distributionLineId &&
                                         c.StopNumber > oldStopNumber &&
@@ -240,6 +249,31 @@ namespace WAHShopBackend.Controllers
                     }
                 }
             }
+            else
+            {
+                if (!isStopStillOccupied)
+                {
+                    var customersToShift = await _context.Customers
+                                       .Where(c =>
+                                              c.DistributionLineId == distributionLineId &&
+                                              c.StopNumber > oldStopNumber &&
+                                              c.Id != currentCustomerId)
+                                       .OrderBy(c => c.StopNumber)
+                                       .ToListAsync();
+
+                    foreach (var c in customersToShift)
+                    {
+                        c.StopNumber -= 1;
+                    }
+
+                    // Wenn die neue Stopnummer größer ist als die alte, müssen wir sie um 1 verringern, da die Kunden mit höheren Stopnummern bereits um 1 verschoben wurden.
+                    if (newStopNumber > oldStopNumber)
+                    {
+                        return newStopNumber - 1;
+                    }
+                }
+            }
+            return -1;
         }
         [HttpDelete("deleteCustomer/{id}")]
         public async Task<IActionResult> DeleteCustomer(int id)
