@@ -33,6 +33,7 @@ namespace WAHShopBackend.Data
         public DbSet <Customers> Customers { get; set; }
         public DbSet<DebtCustomers> DebtCustomers { get; set; }
         public DbSet<TransactionsCustomers> TransactionsCustomers { get; set; }
+        public DbSet<OneTimePayment> OneTimePayments { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -61,12 +62,6 @@ namespace WAHShopBackend.Data
              .WithOne(d => d.Product)          
              .HasForeignKey<ProductDiscounts>(d => d.ProductsId)
              .OnDelete(DeleteBehavior.Cascade);
-
-          
-            // enum to string TransactionsCustomers.Type
-            modelBuilder.Entity<TransactionsCustomers>()
-            .Property(e => e.Type)
-            .HasConversion<string>();
 
             // cascade Customers delete TransactionsCustomers
             modelBuilder.Entity<Customers>()
@@ -112,6 +107,12 @@ namespace WAHShopBackend.Data
                 .WithMany(p => p.UserPermissions)
                 .HasForeignKey(up => up.PermissionId);
 
+            /* Enum */
+            // Enum transaction type
+            modelBuilder.Entity<TransactionsCustomers>()
+            .Property(e => e.Type)
+            .HasConversion<string>();
+            
 
             /* Trigger */
             // trigger TransactionsCustomers create DebtCustomers
