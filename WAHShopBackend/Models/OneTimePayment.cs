@@ -14,6 +14,7 @@ namespace WAHShopBackend.Models
         public string? Notes { get; set; }
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public DateTime? CreatedAt { get; set; }
+        public DateTime PickupDate { get; set; }
 
         public Customers? Customer { get; set; } 
         public virtual DistributionLines? DistributionLine { get; set; }
@@ -26,8 +27,8 @@ namespace WAHShopBackend.Models
     }
     public class OneTimePaymentsGroupDto
     {
-        public DateTime GroupStartDate { get; set; } // Datum des ersten Tages in der Gruppe
-        public List<OneTimePayment> Payments { get; set; } = new();
+        public DateTime GroupPickupDate { get; set; } // Datum des ersten Tages in der Gruppe
+        public List<OneTimePayment> Payments { get; set; } = [];
     }
     public enum OneTimePaymentStatus
     {

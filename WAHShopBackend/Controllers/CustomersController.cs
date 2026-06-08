@@ -22,12 +22,41 @@ namespace WAHShopBackend.Controllers
         {
             try
             {
+                var today = DateTime.Today;
+
                 var customers = await _context.Customers
                     .Where(c => id == 0 || c.DistributionLineId == id)
+                    .Select(c => new Customers
+                    {
+                        Id = c.Id,
+                        Name_de = c.Name_de,
+                        Name_ar = c.Name_ar,
+                        Street = c.Street,
+                        BuildingNumber = c.BuildingNumber,
+                        PostalCode = c.PostalCode,
+                        City = c.City,
+                        Latitude = c.Latitude,
+                        Longitude = c.Longitude,
+                        PhoneNumber = c.PhoneNumber,
+                        Email = c.Email,
+                        Notes_de = c.Notes_de,
+                        Notes_ar = c.Notes_ar,
+                        CreatedAt = c.CreatedAt,
+                        StopNumber = c.StopNumber,
+                        DistributionLineId = c.DistributionLineId,
+                        PIN = c.PIN,
+                        HasOneTimePaymentToday = c.OneTimePayments.Any(p => p.PickupDate.Date == today)
+                    })
                     .OrderBy(c => c.DistributionLineId)
                     .ThenBy(c => c.StopNumber)
-                    .Include(c => c.DistributionLine)
                     .ToListAsync();
+                foreach (var customer in customers)
+                {
+                    if (customer.HasOneTimePaymentToday != false)
+                    {
+
+                    }
+                }
                 if (customers == null || customers.Count == 0)
                 {
                     return NotFound(new ValidationResult { Result = false, Message = "Keine Kunden gefunden." });

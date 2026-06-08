@@ -23,16 +23,20 @@ namespace WAHShopBackend.Models
         [NotMapped]
         public bool shouldStopnummerShift { get; set; } = false;
         public string? PIN { get; set; }
+        [NotMapped]
+        public bool HasOneTimePaymentToday { get; set; } = false;
         // 🔗 FK
         public int DistributionLineId { get; set; }
         public virtual DistributionLines? DistributionLine { get; set; }
-
+        
         [JsonIgnore]
         // 🔗 Navigation property
         public ICollection<TransactionsCustomers>? Transactions { get; set; }
         [JsonIgnore]
         // 🔗 Navigation property
         public ICollection<DebtCustomers>? DebtCustomers { get; set; }
+        [JsonIgnore]
+        public virtual ICollection<OneTimePayment> OneTimePayments { get; set; } = [];
 
     }
 }

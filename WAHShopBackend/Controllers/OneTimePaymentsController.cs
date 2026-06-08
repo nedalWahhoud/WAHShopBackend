@@ -9,7 +9,6 @@ namespace WAHShopBackend.Controllers
 
     public class OneTimePaymentsController(MyDbContext context) : ControllerBase
     {
-        private const int GroupingPeriod = 2;
         private readonly MyDbContext _context = context;
         [HttpPost("add")]
         public async Task<IActionResult> Add(OneTimePayment oneTimePayment)
@@ -18,26 +17,21 @@ namespace WAHShopBackend.Controllers
                 return BadRequest(new ValidationResult() { Result = false, Message = "Die Daten für die Einmalzahlung dürfen nicht null sein.." });
             try
             {
-                var paymentDate = (oneTimePayment.CreatedAt ?? DateTime.Now).Date;
+                var targetPickupDate = oneTimePayment.PickupDate.Date;
 
-                // حساب حدود الفترة الزمنية (يومين قبل ويومين بعد) لمنع التداخل في التجميع
-                var startDate = paymentDate.AddDays(-GroupingPeriod);
-                var endDate = paymentDate.AddDays(GroupingPeriod);
 
-                // فحص قاعدة البيانات: هل هناك دفعة لنفس الزبون ونفس الخط في هذه الفترة؟
+                // Überprüfen, ob bereits eine Einmalzahlung für denselben Kunden, dieselbe Verteilungslinie und dasselbe PickupDate existiert
                 bool isDuplicate = await _context.OneTimePayments.AnyAsync(p =>
                     p.CustomerId == oneTimePayment.CustomerId &&
                     p.DistributionLineId == oneTimePayment.DistributionLineId &&
-                    p.CreatedAt.HasValue &&
-                    p.CreatedAt.Value.Date >= startDate &&
-                    p.CreatedAt.Value.Date <= endDate);
+                    p.PickupDate.Date == targetPickupDate);
 
                 if (isDuplicate)
                 {
                     return BadRequest(new ValidationResult()
                     {
                         Result = false,
-                        Message = "Für diesen Kunden existiert bereits eine Einmalzahlung in diesem Zeitraum, Sie können eine Zahlung auf der Einmalzahlung Seite bearbeiten. / يوجد بالفعل دفعة لهذا الزبون خلال هذه الفترة, يمكنك تعديل عملية الدفع في صفحة الدفع Einmalzahlung."
+                        Message = "Für diesen Kunden existiert bereits eine Einmalzahlung in diesem Datum, Sie können eine Zahlung auf der Einmalzahlung Seite bearbeiten. / يوجد بالفعل دفعة لهذا الزبون في هاذا اليوم , يمكنك تعديل عملية الدفع في صفحة الدفع Einmalzahlung."
                     });
                 }
 
@@ -59,37 +53,24 @@ namespace WAHShopBackend.Controllers
         {
             try
             {
-                var allPayments = await _context.OneTimePayments
-                    .Include(p => p.Customer)
-                    .Where(p => p.DistributionLineId == lineId && p.CreatedAt.HasValue)
-                    .OrderBy(p => p.Customer != null ? p.Customer.StopNumber : 0)
-                    .ToListAsync();
+                var groupedData = await _context.OneTimePayments
+            .Include(p => p.Customer)
+            .Where(p => p.DistributionLineId == lineId)
+            .GroupBy(p => p.PickupDate.Date) // gruppieren nach Datum (nur Tag, Monat, Jahr)
+            .Select(g => new OneTimePaymentsGroupDto
+            {
+                GroupPickupDate = g.Key,
+                // inner sortieren nach StopNumber, damit die Zahlungen in der Reihenfolge der Kundenstops innerhalb der Gruppe angezeigt werden
+                Payments = g.OrderBy(p => p.Customer != null ? p.Customer.StopNumber : 0)
+                            .ToList()
+            })
+            .OrderBy(g => g.GroupPickupDate) // die Gruppen selbst nach Datum sortieren
+            .ToListAsync();
 
-                if (allPayments == null || allPayments.Count == 0)
+                if (groupedData == null || groupedData.Count == 0)
                     return NotFound(new ValidationResult() { Result = true, Message = "Keine Einmalzahlungen für die angegebene Verteilungslinie gefunden." });
 
-                var groupedResults = new List<OneTimePaymentsGroupDto>();
-                OneTimePaymentsGroupDto currentGroup = null!;
-
-                foreach (var payment in allPayments)
-                {
-                    DateTime paymentDate = payment.CreatedAt!.Value.Date;
-
-                    if (currentGroup == null || paymentDate >= currentGroup.GroupStartDate.AddDays(GroupingPeriod))
-                    {
-                        currentGroup = new OneTimePaymentsGroupDto
-                        {
-                            GroupStartDate = paymentDate,
-                            Payments = new List<OneTimePayment>()
-                        };
-                        groupedResults.Add(currentGroup);
-                    }
-
-                    currentGroup.Payments.Add(payment);
-                }
-
-
-                return Ok(groupedResults);
+                return Ok(groupedData);
             }
             catch (Exception ex)
             {
@@ -104,7 +85,12 @@ namespace WAHShopBackend.Controllers
                 var existingPayment = await _context.OneTimePayments.FindAsync(editOneTimePayment.Id);
                 if (existingPayment == null)
                     return NotFound(new ValidationResult() { Result = false, Message = "Einmalzahlung nicht gefunden." });
-                
+
+                // wenn caretAt null ist, dann holen wir die von Database, damit nicht fehler entsteht, da CreatedAt in der Datenbank automatisch generiert,
+                // manchmal wird in Forntend neu Payment erstellt, und in gleiche Setzung den Payment updatet wird, da die CratedAt null, und noch nicht von Database geholt
+                if (editOneTimePayment.CreatedAt == null)
+                    editOneTimePayment.CreatedAt = existingPayment.CreatedAt; // CreatedAt nicht aktualisieren
+
                 _context.Entry(existingPayment).CurrentValues.SetValues(editOneTimePayment);
                 int result = await _context.SaveChangesAsync();
                 if (result <= 0)
