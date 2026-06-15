@@ -154,40 +154,70 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
-        [HttpGet("getProductsByCategoryId/{categoryId}")]
-        public async Task<IActionResult> GetProductsByCategoryId(int categoryId, [FromQuery] GetItems<Product> getItems, [FromQuery] List<int>? excludeProductsIds = null, [FromQuery] bool IsAdmin = false)
+        [HttpPost("getProductsByCategoryId/{categoryId}")]
+        public async Task<IActionResult> GetProductsByCategoryId([FromRoute] int categoryId, [FromBody] GetItems<Product> getItems)
         {
             // -1 is for OnOffer
             try
             {
-                excludeProductsIds ??= [];
+                getItems.ExcludeProductsIds ??= [];
 
                 var baseQuery = _context.Products
+                    .AsNoTracking()
                     .Where(p => (categoryId == -1 ?
                        (p.ProductDiscount != null &&
                         p.ProductDiscount.DiscountedPrice > 0 &&
                         DateTime.Today >= p.ProductDiscount.StartDate.Date &&
                         DateTime.Today <= p.ProductDiscount.EndDate.Date)
-                        : p.CategoryId == categoryId
-                        )
-                    && !excludeProductsIds.Contains(p.Id) &&
-                     (IsAdmin || p.Quantity > 0));
-                    
+                        : p.CategoryId == categoryId)
+                    && !getItems.ExcludeProductsIds.Contains(p.Id) &&
+                     (getItems.IsAdmin || p.Quantity > 0));
 
-                var products = await baseQuery
-                    .Include(p => p.Category)
-                    .Include(p => p.Suppliers)
-                    .Include(p => p.TaxRate)
-                    .Include(p => p.ProductGroup)
-                    .Include(p => p.ProductImages)
-                    .Include(p => p.ProductDiscount)
-                    .OrderBy(p => Guid.NewGuid())
+                // random
+                var availableIds = await baseQuery.Select(p => p.Id).ToListAsync();
+                var random = new Random();
+                var randomIds = availableIds
+                    .OrderBy(id => random.Next())
                     .Take(getItems.PageSize)
+                    .ToList();
+                // get products
+                bool includeAll = getItems.Includes == ProductIncludes.All;
+                var products = await baseQuery
+                    .Where(p => randomIds.Contains(p.Id))
+                    .Select(p => new Product
+                    {
+                        Id = p.Id,
+                        Name_de = p.Name_de,
+                        Description_de = p.Description_de,
+                        CategoryId = p.CategoryId,
+                        Barcode = p.Barcode,
+                        Quantity = p.Quantity,
+                        PurchasePrice = p.PurchasePrice,
+                        SalePrice = p.SalePrice,
+                        MinimumStock = p.MinimumStock,
+                        EXPDate = p.EXPDate,
+                        UserId = p.UserId,
+                        Name_ar = p.Name_ar,
+                        Description_ar = p.Description_ar,
+                        TaxRateId = p.TaxRateId,
+                        ProductGroupID = p.ProductGroupID,
+                        IsShippable = p.IsShippable,
+
+                        Category = getItems.Includes.HasFlag(ProductIncludes.Category) || includeAll ? p.Category : null!,
+                        Suppliers = getItems.Includes.HasFlag(ProductIncludes.Suppliers) || includeAll ? p.Suppliers : null!,
+                        TaxRate = getItems.Includes.HasFlag(ProductIncludes.TaxRate) || includeAll ? p.TaxRate : null,
+                        ProductGroup = getItems.Includes.HasFlag(ProductIncludes.ProductGroup) || includeAll ? p.ProductGroup : null!,
+                        ProductImages = getItems.Includes.HasFlag(ProductIncludes.ProductImages) || includeAll ? p.ProductImages : null!,
+                        ProductDiscount = getItems.Includes.HasFlag(ProductIncludes.ProductDiscount) || includeAll ? p.ProductDiscount : null!,
+
+
+                        IsFavorite = (getItems.UserId > 0 ? _context.UserFavorite.Any(f => f.ProductId == p.Id && f.UserId == getItems.UserId) : false)
+                    })
                     .ToListAsync();
 
                 int allCount = await baseQuery.CountAsync();
 
-                if (products.Count == 0 && (getItems.PageSize + excludeProductsIds.Count) >= allCount)
+                if (products.Count == 0 && (getItems.PageSize + getItems.ExcludeProductsIds.Count) >= allCount)
                 {
                     getItems.AllItemsLoaded = true;
                 }

@@ -29,5 +29,7 @@ namespace WAHShopBackend.Models
         public GroupProducts? ProductGroup { get; set; }
         public bool IsShippable { get; set; } 
         public ProductDiscounts? ProductDiscount { get; set; }
+        [NotMapped]
+        public bool IsFavorite { get; set; }
     }
 }

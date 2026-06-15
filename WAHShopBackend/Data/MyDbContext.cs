@@ -19,7 +19,7 @@ namespace WAHShopBackend.Data
         public DbSet<OrderItems> OrderItems { get; set; }
         public DbSet<PasswordReset> PasswordReset { get; set; }
         public DbSet<PaymentMethod> PaymentMethods { get; set; }
-
+        public DbSet<UserFavorite> UserFavorite { get; set; }
         public DbSet<TaxRate> TaxRates { get; set; }
         public DbSet<GroupProducts> GroupProducts { get; set; }
         public DbSet<DiscountCodes> DiscountCodes { get; set; }
@@ -92,6 +92,10 @@ namespace WAHShopBackend.Data
                   .HasForeignKey("ProductID")
                   .OnDelete(DeleteBehavior.Cascade)  
             );
+
+            /* UserFavorite zwei Keys */
+            modelBuilder.Entity<UserFavorite>()
+                .HasKey(f => new { f.UserId, f.ProductId });
 
             /* User */
             modelBuilder.Entity<UserPermission>()

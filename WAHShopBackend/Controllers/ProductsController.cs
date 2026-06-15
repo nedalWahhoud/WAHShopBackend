@@ -87,7 +87,7 @@ namespace WAHShopBackend.Controllers
                 if (product != null && product.Count > 0)
                     return Ok(product);
                 else
-                    return BadRequest(new ValidationResult { Result = false, Message = "Product not found." });
+                    return BadRequest(new ValidationResult { Result = false, Message = "Keine Produkte gefunden." });
             }
             catch (Exception ex)
             {
@@ -95,7 +95,7 @@ namespace WAHShopBackend.Controllers
             }
         }
         [HttpGet("getProductById/{id}")]
-        public async Task<IActionResult> GetProductById(int id, bool onlyInStock = false)
+        public async Task<IActionResult> GetProductById(int id, bool onlyInStock = false,int userId = 0)
         {
             try
             {
@@ -107,6 +107,32 @@ namespace WAHShopBackend.Controllers
             .Include(p => p.ProductGroup)
             .Include(p => p.ProductImages)
             .Include(p => p.ProductDiscount)
+            .Select(p => new Product
+            {
+                Id = p.Id,
+                Name_de = p.Name_de,
+                Description_de = p.Description_de,
+                CategoryId = p.CategoryId,
+                Category = p.Category,
+                Barcode = p.Barcode,
+                Quantity = p.Quantity,
+                PurchasePrice = p.PurchasePrice,
+                SalePrice = p.SalePrice,
+                MinimumStock = p.MinimumStock,
+                EXPDate = p.EXPDate,
+                Suppliers = p.Suppliers,
+                UserId = p.UserId,
+                ProductImages = p.ProductImages,
+                Name_ar = p.Name_ar,
+                Description_ar = p.Description_ar,
+                TaxRateId = p.TaxRateId,
+                TaxRate = p.TaxRate,
+                ProductGroupID = p.ProductGroupID,
+                ProductGroup = p.ProductGroup,
+                IsShippable = p.IsShippable,
+                ProductDiscount = p.ProductDiscount,
+                IsFavorite = (userId > 0 ? _context.UserFavorite.Any(f => f.ProductId == p.Id && f.UserId == userId) : false)
+            })
             .Where(p => p.Id == id);
 
 
@@ -127,30 +153,23 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
-        [HttpGet("getProducts")]
-        public async Task<IActionResult> GetProducts([FromQuery] GetItems<Product> _getItems)
+        [HttpPost("getProducts")]
+        public async Task<IActionResult> GetProducts([FromBody] GetItems<Product> getItems)
         {
-            GetItems<Product> getItems = new();
 
-            if (_getItems.AllItemsLoaded)
+            if (getItems.AllItemsLoaded)
                 return Ok(getItems = new GetItems<Product> { Items = [], AllItemsLoaded = true });
 
             try
             {
                 var query = _context.Products
                     .AsNoTracking()
-                    .Include(p => p.Category)
-                    .Include(p => p.Suppliers)
-                    .Include(p => p.TaxRate)
-                    .Include(p => p.ProductGroup)
-                    .Include(p => p.ProductImages)
-                    .Include(p => p.ProductDiscount)
                     .AsSplitQuery();
 
-                int filterId = _getItems.Filter?.Id ?? 0;
-                if (_getItems.Filter != null && _getItems.Filter.Type != GetItemFilterType.None)
+                int filterId = getItems.Filter?.Id ?? 0;
+                if (getItems.Filter != null && getItems.Filter.Type != GetItemFilterType.None)
                 {
-                    query = _getItems.Filter.Type switch
+                    query = getItems.Filter.Type switch
                     {
                         GetItemFilterType.Category => query.Where(p => p.CategoryId == filterId),
                         GetItemFilterType.Supplier => query.Where(p => p.Suppliers.Any(s => s.Id == filterId)),
@@ -163,24 +182,54 @@ namespace WAHShopBackend.Controllers
                     };
                 }
 
+                bool includeAll = getItems.Includes == ProductIncludes.All;
+
                 var products = await query
                     .OrderBy(p => p.Name_de)
-                    .Skip(_getItems.CurrentPage * _getItems.PageSize)
-                    .Take(_getItems.PageSize)
+                    .Skip(getItems.CurrentPage * getItems.PageSize)
+                    .Take(getItems.PageSize)
+                      .Select(p => new Product
+                      {
+                          Id = p.Id,
+                          Name_de = p.Name_de,
+                          Description_de = p.Description_de,
+                          CategoryId = p.CategoryId,
+                          Barcode = p.Barcode,
+                          Quantity = p.Quantity,
+                          PurchasePrice = p.PurchasePrice,
+                          SalePrice = p.SalePrice,
+                          MinimumStock = p.MinimumStock,
+                          EXPDate = p.EXPDate,
+                          UserId = p.UserId,
+                          Name_ar = p.Name_ar,
+                          Description_ar = p.Description_ar,
+                          TaxRateId = p.TaxRateId,
+                          ProductGroupID = p.ProductGroupID,
+                          IsShippable = p.IsShippable,
+
+
+                          Category = getItems.Includes.HasFlag(ProductIncludes.Category) || includeAll ? p.Category : null!,
+                          Suppliers = getItems.Includes.HasFlag(ProductIncludes.Suppliers) || includeAll ? p.Suppliers : null!,
+                          TaxRate = getItems.Includes.HasFlag(ProductIncludes.TaxRate) || includeAll ? p.TaxRate : null,
+                          ProductGroup = getItems.Includes.HasFlag(ProductIncludes.ProductGroup) || includeAll ? p.ProductGroup : null!,
+                          ProductImages = getItems.Includes.HasFlag(ProductIncludes.ProductImages) || includeAll ? p.ProductImages : null!,
+                          ProductDiscount = getItems.Includes.HasFlag(ProductIncludes.ProductDiscount) || includeAll ? p.ProductDiscount : null!,
+
+                          IsFavorite = (getItems.UserId > 0 ? _context.UserFavorite.Any(f => f.ProductId == p.Id && f.UserId == getItems.UserId) : false)
+                      })
                     .ToListAsync();
 
                 var totalCount = await query.CountAsync();
-                var loadedCount = (_getItems.CurrentPage * _getItems.PageSize) + products.Count;
+                var loadedCount = (getItems.CurrentPage * getItems.PageSize) + products.Count;
                 if (loadedCount >= totalCount)
                 {
                     getItems.AllItemsLoaded = true;
                 }
 
 
-                _getItems.CurrentPage++;
                 getItems.Items = products;
-                getItems.PageSize = _getItems.PageSize;
-                getItems.CurrentPage = _getItems.CurrentPage;
+                getItems.PageSize = getItems.PageSize;
+                getItems.CurrentPage = getItems.CurrentPage;
 
                 return Ok(getItems);
             }
