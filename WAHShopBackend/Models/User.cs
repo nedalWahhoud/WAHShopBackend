@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
 namespace WAHShopBackend.Models
@@ -19,5 +20,7 @@ namespace WAHShopBackend.Models
         public List<UserPermission> UserPermissions { get; set; } = [];
         [JsonIgnore]
         public ICollection<Order> Orders { get; set; } = [];
+        [NotMapped, JsonIgnore]
+        public ICollection<UserFavorite> UserFavorite { get; set; } = [];
     }
 }

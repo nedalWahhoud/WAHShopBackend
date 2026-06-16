@@ -31,5 +31,7 @@ namespace WAHShopBackend.Models
         public ProductDiscounts? ProductDiscount { get; set; }
         [NotMapped]
         public bool IsFavorite { get; set; }
+        [NotMapped, JsonIgnore]
+        public ICollection<UserFavorite> UserFavorite { get; set; } = [];
     }
 }

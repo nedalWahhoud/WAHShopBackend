@@ -93,9 +93,21 @@ namespace WAHShopBackend.Data
                   .OnDelete(DeleteBehavior.Cascade)  
             );
 
-            /* UserFavorite zwei Keys */
+            /* UserFavorite */
+            /* zwei Keys */
             modelBuilder.Entity<UserFavorite>()
                 .HasKey(f => new { f.UserId, f.ProductId });
+
+            modelBuilder.Entity<UserFavorite>()
+                .HasOne(f => f.User)
+               .WithMany(u => u.UserFavorite)
+               .HasForeignKey(t => t.UserId)
+               .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<UserFavorite>()
+               .HasOne(f => f.Product)
+              .WithMany(u => u.UserFavorite)
+              .HasForeignKey(t => t.ProductId)
+              .OnDelete(DeleteBehavior.Cascade);
 
             /* User */
             modelBuilder.Entity<UserPermission>()
