@@ -17,6 +17,11 @@ namespace WAHShopBackend.Models
 
         public ProductIncludes Includes { get; set; } = ProductIncludes.All;
     }
+    public class FilterOption
+    {
+        public int Id { get; set; } = 0;
+        public GetItemFilterType Type { get; set; } = GetItemFilterType.None;
+    }
     public enum GetItemFilterType
     {
         None,
@@ -27,11 +32,7 @@ namespace WAHShopBackend.Models
         OnOffer
     }
 
-    public class FilterOption
-    {
-        public int Id { get; set; } = 0;
-        public GetItemFilterType Type { get; set; } = GetItemFilterType.None;
-    }
+   
     [Flags]
     public enum ProductIncludes
     {

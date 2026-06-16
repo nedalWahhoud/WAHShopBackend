@@ -182,13 +182,21 @@ namespace WAHShopBackend.Controllers
                     };
                 }
 
+                //
                 bool includeAll = getItems.Includes == ProductIncludes.All;
+                bool checkIncludeAll = getItems.Includes == ProductIncludes.All;
+                bool checkIncludeCategory = checkIncludeAll || getItems.Includes.HasFlag(ProductIncludes.Category);
+                bool checkIncludeSuppliers = checkIncludeAll || getItems.Includes.HasFlag(ProductIncludes.Suppliers);
+                bool checkIncludeTaxRate = checkIncludeAll || getItems.Includes.HasFlag(ProductIncludes.TaxRate);
+                bool checkIncludeProductGroup = checkIncludeAll || getItems.Includes.HasFlag(ProductIncludes.ProductGroup);
+                bool checkIncludeProductImages = checkIncludeAll || getItems.Includes.HasFlag(ProductIncludes.ProductImages);
+                bool checkIncludeProductDiscount = checkIncludeAll || getItems.Includes.HasFlag(ProductIncludes.ProductDiscount);
 
                 var products = await query
                     .OrderBy(p => p.Name_de)
                     .Skip(getItems.CurrentPage * getItems.PageSize)
                     .Take(getItems.PageSize)
-                      .Select(p => new Product
+                    .Select(p => new Product
                       {
                           Id = p.Id,
                           Name_de = p.Name_de,
@@ -207,16 +215,13 @@ namespace WAHShopBackend.Controllers
                           ProductGroupID = p.ProductGroupID,
                           IsShippable = p.IsShippable,
 
-
-                          Category = getItems.Includes.HasFlag(ProductIncludes.Category) || includeAll ? p.Category : null!,
-                          Suppliers = getItems.Includes.HasFlag(ProductIncludes.Suppliers) || includeAll ? p.Suppliers : null!,
-                          TaxRate = getItems.Includes.HasFlag(ProductIncludes.TaxRate) || includeAll ? p.TaxRate : null,
-                          ProductGroup = getItems.Includes.HasFlag(ProductIncludes.ProductGroup) || includeAll ? p.ProductGroup : null!,
-                          ProductImages = getItems.Includes.HasFlag(ProductIncludes.ProductImages) || includeAll ? p.ProductImages : null!,
-                          ProductDiscount = getItems.Includes.HasFlag(ProductIncludes.ProductDiscount) || includeAll ? p.ProductDiscount : null!,
-
-                          IsFavorite = (getItems.UserId > 0 ? _context.UserFavorite.Any(f => f.ProductId == p.Id && f.UserId == getItems.UserId) : false)
-                      })
+                        Category = checkIncludeCategory ? p.Category : null!,
+                        Suppliers = checkIncludeSuppliers ? p.Suppliers : null!,
+                        TaxRate = checkIncludeTaxRate ? p.TaxRate : null,
+                        ProductGroup = checkIncludeProductGroup ? p.ProductGroup : null!,
+                        ProductImages = checkIncludeProductImages ? p.ProductImages : null!,
+                        ProductDiscount = checkIncludeProductDiscount ? p.ProductDiscount : null!,
+                    })
                     .ToListAsync();
 
                 var totalCount = await query.CountAsync();
@@ -225,7 +230,6 @@ namespace WAHShopBackend.Controllers
                 {
                     getItems.AllItemsLoaded = true;
                 }
-
 
                 getItems.Items = products;
                 getItems.PageSize = getItems.PageSize;

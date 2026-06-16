@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using WAHShopBackend.Data;
 using WAHShopBackend.Models;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 namespace WAHShopBackend.Controllers
 {
     [ApiController]
@@ -90,22 +91,39 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
-        [HttpGet("getCategories")]
-        public async Task<IActionResult> GetCategories()
+        [HttpPost("getCategories")]
+        public async Task<IActionResult> GetCategories(GetItems<Categories> getItems)
         {
             try
             {
-                var categories = await _context.Categories
-                    .OrderBy(c => c.Name_de)
+
+               IQueryable<Categories> query;
+                // wenn admin darf alle Produkte sehen
+                if (getItems.IsAdmin)
+                {
+                    query = _context.Categories
+                    .AsNoTracking()
+                    .OrderBy(c => c.Name_de);
+                }
+                // wenn eine normale Benutzer dann darf nur die Categories, die quantity haben
+                else
+                {
+                    query = _context.Categories
+                        .AsNoTracking()
+                        .OrderBy(c => c.Name_de)
+                        .Where(c => _context.Products.Any(p => p.CategoryId == c.Id && p.Quantity > 0));
+                }
+
+                var categories = await query
                     .ToListAsync();
 
-                var getItems = new GetItems<Categories>
-                {
-                    Items = categories,
-                    AllItemsLoaded = true
-                };
+                getItems.Items = categories;
+                getItems.AllItemsLoaded = true;
+
 
                 return Ok(getItems);
+
+                
             }
             catch(Exception ex)
             {
@@ -154,36 +172,50 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
-        [HttpPost("getProductsByCategoryId/{categoryId}")]
-        public async Task<IActionResult> GetProductsByCategoryId([FromRoute] int categoryId, [FromBody] GetItems<Product> getItems)
+        [HttpPost("getProductsByCategoryId")]
+        public async Task<IActionResult> GetProductsByCategoryId([FromBody] GetItems<Product> getItems)
         {
             // -1 is for OnOffer
             try
             {
-                getItems.ExcludeProductsIds ??= [];
 
+                if(getItems?.Filter == null || getItems.Filter.Type != GetItemFilterType.Category)
+                    return StatusCode(500, new ValidationResult { Result = false, Message = "die filterType ist nicht category, hier muss category sein" });
+
+                int categoryId = getItems.Filter.Id;
+
+                // initize
+                getItems.ExcludeProductsIds ??= [];
+                DateTime today = DateTime.Today;
+                //
                 var baseQuery = _context.Products
                     .AsNoTracking()
                     .Where(p => (categoryId == -1 ?
                        (p.ProductDiscount != null &&
                         p.ProductDiscount.DiscountedPrice > 0 &&
-                        DateTime.Today >= p.ProductDiscount.StartDate.Date &&
-                        DateTime.Today <= p.ProductDiscount.EndDate.Date)
+                        today >= p.ProductDiscount.StartDate.Date &&
+                        today <= p.ProductDiscount.EndDate.Date)
                         : p.CategoryId == categoryId)
                     && !getItems.ExcludeProductsIds.Contains(p.Id) &&
                      (getItems.IsAdmin || p.Quantity > 0));
 
-                // random
-                var availableIds = await baseQuery.Select(p => p.Id).ToListAsync();
-                var random = new Random();
-                var randomIds = availableIds
-                    .OrderBy(id => random.Next())
-                    .Take(getItems.PageSize)
-                    .ToList();
+                // get favoriteids um zu vergleichen
+                var favoriteIds = await _context.UserFavorite
+                        .Where(x => x.UserId == getItems.UserId)
+                        .Select(x => x.ProductId)
+                        .ToHashSetAsync();
                 // get products
-                bool includeAll = getItems.Includes == ProductIncludes.All;
+                bool checkIncludeAll = getItems.Includes == ProductIncludes.All;
+                bool checkIncludeCategory = checkIncludeAll || getItems.Includes.HasFlag(ProductIncludes.Category);
+                bool checkIncludeSuppliers = checkIncludeAll || getItems.Includes.HasFlag(ProductIncludes.Suppliers);
+                bool checkIncludeTaxRate = checkIncludeAll || getItems.Includes.HasFlag(ProductIncludes.TaxRate);
+                bool checkIncludeProductGroup = checkIncludeAll || getItems.Includes.HasFlag(ProductIncludes.ProductGroup);
+                bool checkIncludeProductImages = checkIncludeAll || getItems.Includes.HasFlag(ProductIncludes.ProductImages);
+                bool checkIncludeProductDiscount = checkIncludeAll || getItems.Includes.HasFlag(ProductIncludes.ProductDiscount);
+
                 var products = await baseQuery
-                    .Where(p => randomIds.Contains(p.Id))
+                    .OrderBy(p => Guid.NewGuid())
+                    .Take(getItems.PageSize)
                     .Select(p => new Product
                     {
                         Id = p.Id,
@@ -203,15 +235,15 @@ namespace WAHShopBackend.Controllers
                         ProductGroupID = p.ProductGroupID,
                         IsShippable = p.IsShippable,
 
-                        Category = getItems.Includes.HasFlag(ProductIncludes.Category) || includeAll ? p.Category : null!,
-                        Suppliers = getItems.Includes.HasFlag(ProductIncludes.Suppliers) || includeAll ? p.Suppliers : null!,
-                        TaxRate = getItems.Includes.HasFlag(ProductIncludes.TaxRate) || includeAll ? p.TaxRate : null,
-                        ProductGroup = getItems.Includes.HasFlag(ProductIncludes.ProductGroup) || includeAll ? p.ProductGroup : null!,
-                        ProductImages = getItems.Includes.HasFlag(ProductIncludes.ProductImages) || includeAll ? p.ProductImages : null!,
-                        ProductDiscount = getItems.Includes.HasFlag(ProductIncludes.ProductDiscount) || includeAll ? p.ProductDiscount : null!,
+                        Category = checkIncludeCategory ? p.Category : null!,
+                        Suppliers = checkIncludeSuppliers ? p.Suppliers : null!,
+                        TaxRate = checkIncludeTaxRate ? p.TaxRate : null,
+                        ProductGroup = checkIncludeProductGroup ? p.ProductGroup : null!,
+                        ProductImages = checkIncludeProductImages ? p.ProductImages : null!,
+                        ProductDiscount = checkIncludeProductDiscount ? p.ProductDiscount : null!,
 
 
-                        IsFavorite = (getItems.UserId > 0 ? _context.UserFavorite.Any(f => f.ProductId == p.Id && f.UserId == getItems.UserId) : false)
+                        IsFavorite = favoriteIds.Contains(p.Id)
                     })
                     .ToListAsync();
 
