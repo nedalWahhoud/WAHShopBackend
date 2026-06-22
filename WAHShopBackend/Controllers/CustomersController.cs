@@ -44,19 +44,14 @@ namespace WAHShopBackend.Controllers
                         CreatedAt = c.CreatedAt,
                         StopNumber = c.StopNumber,
                         DistributionLineId = c.DistributionLineId,
+                        DistributionLine = c.DistributionLine,
                         PIN = c.PIN,
                         HasOneTimePaymentToday = c.OneTimePayments.Any(p => p.PickupDate.Date == today)
                     })
                     .OrderBy(c => c.DistributionLineId)
                     .ThenBy(c => c.StopNumber)
                     .ToListAsync();
-                foreach (var customer in customers)
-                {
-                    if (customer.HasOneTimePaymentToday != false)
-                    {
-
-                    }
-                }
+               
                 if (customers == null || customers.Count == 0)
                 {
                     return NotFound(new ValidationResult { Result = false, Message = "Keine Kunden gefunden." });
