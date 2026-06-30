@@ -16,5 +16,6 @@ namespace WAHShopBackend.Models
         public string? Phone { get; set; }
         public string? Email { get; set; }
         public string? Website { get; set; }
+        public string? Name_Ar { get; set; }
     }
 }

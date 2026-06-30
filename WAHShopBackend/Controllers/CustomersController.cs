@@ -46,7 +46,10 @@ namespace WAHShopBackend.Controllers
                         DistributionLineId = c.DistributionLineId,
                         DistributionLine = c.DistributionLine,
                         PIN = c.PIN,
-                        HasOneTimePaymentToday = c.OneTimePayments.Any(p => p.PickupDate.Date == today)
+                        // prüfen der Kunde ob heute eine Einamlzahlung hat
+                        HasOneTimePaymentToday = c.OneTimePayments.Any(p => p.PickupDate.Date == today),
+                        // prüfen ob der Kunde Schulden hat
+                        HasDebt = _context.DebtCustomers.Any(d => d.CustomerId == c.Id && d.Balance > 0)
                     })
                     .OrderBy(c => c.DistributionLineId)
                     .ThenBy(c => c.StopNumber)

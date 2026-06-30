@@ -25,6 +25,8 @@ namespace WAHShopBackend.Models
         public string? PIN { get; set; }
         [NotMapped]
         public bool HasOneTimePaymentToday { get; set; } = false;
+        [NotMapped]
+        public bool HasDebt { get; set; } = false;
         // 🔗 FK
         public int DistributionLineId { get; set; }
         public virtual DistributionLines? DistributionLine { get; set; }
