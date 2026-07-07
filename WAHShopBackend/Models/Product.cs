@@ -29,9 +29,20 @@ namespace WAHShopBackend.Models
         public GroupProducts? ProductGroup { get; set; }
         public bool IsShippable { get; set; } 
         public ProductDiscounts? ProductDiscount { get; set; }
+        public int PackagingUnit { get; set; }
+        public int ItemsPerPackage { get; set; }
         [NotMapped]
         public bool IsFavorite { get; set; }
         [NotMapped, JsonIgnore]
         public ICollection<UserFavorite> UserFavorite { get; set; } = [];
+    }
+
+    public enum ProductUnit
+    {
+        Piece = 1,
+        Kilogram = 2,
+        Box = 3,
+        Sack = 4,
+        Crate = 5
     }
 }

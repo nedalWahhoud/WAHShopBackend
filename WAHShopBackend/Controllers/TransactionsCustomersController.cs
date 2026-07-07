@@ -129,17 +129,18 @@ namespace WAHShopBackend.Controllers
         [HttpDelete("deleteTransaction/{id}")]
         public async Task<IActionResult> DeleteTransaction(int id)
         {
-            var transaction = await _context.TransactionsCustomers.FindAsync(id);
-            if (transaction == null)
-                return NotFound(new ValidationResult { Result = false, Message = "Transaktion nicht gefunden." });
+            if (id <= 0)
+                return BadRequest(new ValidationResult { Result = false, Message = "Ungültige Id" });
+
             try
             {
-                _context.TransactionsCustomers.Remove(transaction);
-                var result = await _context.SaveChangesAsync();
-                if (result > 0)
-                    return Ok(new ValidationResult { Result = true, Message = "Transaktion erfolgreich gelöscht." });
-                else
-                    return StatusCode(500, new ValidationResult { Result = false, Message = "Transaktion konnte nicht gelöscht werden." });
+                int rowsAffected = await _context.TransactionsCustomers
+                             .Where(p => p.Id == id)
+                             .ExecuteDeleteAsync();
+                if (rowsAffected == 0)
+                    return NotFound(new ValidationResult() { Result = false, Message = "Supplier nicht gefunden." });
+
+                return Ok(new ValidationResult { Result = true, Message = "Transaktion erfolgreich gelöscht." });
             }
             catch (Exception ex)
             {

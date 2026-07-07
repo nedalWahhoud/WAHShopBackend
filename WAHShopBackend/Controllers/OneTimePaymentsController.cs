@@ -11,20 +11,21 @@ namespace WAHShopBackend.Controllers
     {
         private readonly MyDbContext _context = context;
         [HttpPost("add")]
-        public async Task<IActionResult> Add(OneTimePayment oneTimePayment)
+        public async Task<IActionResult> Add([FromBody] OneTimePayment oneTimePayment)
         {
             if (oneTimePayment == null)
                 return BadRequest(new ValidationResult() { Result = false, Message = "Die Daten für die Einmalzahlung dürfen nicht null sein.." });
             try
             {
-                var targetPickupDate = oneTimePayment.PickupDate.Date;
-
+                var startOfDay = oneTimePayment.PickupDate.Date;
+                var endOfDay = startOfDay.AddDays(1);
 
                 // Überprüfen, ob bereits eine Einmalzahlung für denselben Kunden, dieselbe Verteilungslinie und dasselbe PickupDate existiert
                 bool isDuplicate = await _context.OneTimePayments.AnyAsync(p =>
                     p.CustomerId == oneTimePayment.CustomerId &&
                     p.DistributionLineId == oneTimePayment.DistributionLineId &&
-                    p.PickupDate.Date == targetPickupDate);
+                    p.PickupDate >= startOfDay &&
+                    p.PickupDate < endOfDay);
 
                 if (isDuplicate)
                 {
@@ -35,6 +36,9 @@ namespace WAHShopBackend.Controllers
                     });
                 }
 
+                // Alte Zahlungen im Hintergrund löschen
+                await DeleteOldPaymentsAsync();
+                // add
                 _context.OneTimePayments.Add(oneTimePayment);
                 int result = await _context.SaveChangesAsync();
                 if (result <= 0)
@@ -45,6 +49,36 @@ namespace WAHShopBackend.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new ValidationResult() { Result = false, Message = $"Fehler beim Hinzufügen der Einmalzahlung: {ex.InnerException?.Message ?? ex.Message}" });
+            }
+        }
+        private static DateTime? _lastCleanupDate = null;
+        private async Task DeleteOldPaymentsAsync()
+        {
+            DateTime tody = DateTime.Now.Date;
+
+            if(tody == _lastCleanupDate)
+            {
+                // Bereits heute aufgeräumt, keine Aktion erforderlich
+                return;
+            }
+
+            try
+            {
+                // Berechne das Datum von vor einem Monat.
+                var oneMonthAgo = DateTime.Now.AddMonths(-1);
+
+                // Löschen Sie Zahlungen direkt aus der Datenbank 
+                await _context.OneTimePayments
+                    .Where(p => p.PickupDate < oneMonthAgo)
+                    .ExecuteDeleteAsync();
+
+                // Aktualisiere das letzte Aufräumdatum
+                _lastCleanupDate = tody;
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Fehler beim automatischen Löschen: {ex.Message}");
             }
         }
         // wir nehmen die OneTimeZahlungen immer Tag der created und ein Tag danach, da die Zahlungen immer vortag der verteilung erstellt werden oder am selben Tag.
@@ -86,12 +120,10 @@ namespace WAHShopBackend.Controllers
                 if (existingPayment == null)
                     return NotFound(new ValidationResult() { Result = false, Message = "Einmalzahlung nicht gefunden." });
 
-                // wenn caretAt null ist, dann holen wir die von Database, damit nicht fehler entsteht, da CreatedAt in der Datenbank automatisch generiert,
-                // manchmal wird in Forntend neu Payment erstellt, und in gleiche Setzung den Payment updatet wird, da die CratedAt null, und noch nicht von Database geholt
-                if (editOneTimePayment.CreatedAt == null)
-                    editOneTimePayment.CreatedAt = existingPayment.CreatedAt; // CreatedAt nicht aktualisieren
-
                 _context.Entry(existingPayment).CurrentValues.SetValues(editOneTimePayment);
+                // CreatedAt nicht aktualisieren
+                _context.Entry(existingPayment).Property(x => x.CreatedAt).IsModified = false;
+
                 int result = await _context.SaveChangesAsync();
                 if (result <= 0)
                     return StatusCode(500, new ValidationResult() { Result = false, Message = "Fehler beim Aktualisieren des Status der Einmalzahlung." });
@@ -106,16 +138,15 @@ namespace WAHShopBackend.Controllers
         public async Task<IActionResult> Delete(int id)
         {
             if (id <= 0)
-                return BadRequest(new ValidationResult() { Result = false, Message = "Ungültige ID für die Einmalzahlung." });
+                return BadRequest(new ValidationResult() { Result = false, Message = "Ungültige ID." });
             try
             {
-                var existingPayment = await _context.OneTimePayments.FindAsync(id);
-                if (existingPayment == null)
+                int rowsAffected = await _context.OneTimePayments
+                                   .Where(p => p.Id == id)
+                                   .ExecuteDeleteAsync();
+
+                if (rowsAffected == 0)
                     return NotFound(new ValidationResult() { Result = false, Message = "Einmalzahlung nicht gefunden." });
-                _context.OneTimePayments.Remove(existingPayment);
-                int result = await _context.SaveChangesAsync();
-                if (result <= 0)
-                    return StatusCode(500, new ValidationResult() { Result = false, Message = "Fehler beim Löschen der Einmalzahlung." });
 
                 return Ok(new ValidationResult() { Result = true, Message = "Einmalzahlung erfolgreich gelöscht." });
             }

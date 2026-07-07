@@ -34,20 +34,19 @@ namespace WAHShopBackend.Controllers
         [HttpDelete("deleteDebtByCustomerId/{customerId}")]
         public async Task<IActionResult> DeleteDebtByCustomerId(int customerId)
         {
+            if (customerId <= 0)
+                return BadRequest(new ValidationResult { Result = false, Message = "Ungültige Id." });
             try
             {
-                var debtRecord = await _context.DebtCustomers
-                    .FirstOrDefaultAsync(dc => dc.CustomerId == customerId);
-                if (debtRecord != null)
-                {
-                    _context.DebtCustomers.Remove(debtRecord);
-                    await _context.SaveChangesAsync();
-                    return Ok(new ValidationResult { Result = true, Message = "Schuldenaufzeichnung erfolgreich gelöscht." });
-                }
-                else
-                {
-                    return NotFound(new ValidationResult { Result = false, Message = "Keine Schuldenaufzeichnung für den angegebenen Kunden gefunden." });
-                }
+
+                int rowsAffected = await _context.Customers
+                                 .Where(p => p.Id == customerId)
+                                 .ExecuteDeleteAsync();
+
+                if (rowsAffected == 0)
+                    return NotFound(new ValidationResult() { Result = false, Message = "Schuldenaufzeichnung nicht gefunden." });
+
+                return Ok(new ValidationResult { Result = true, Message = "Schuldenaufzeichnung erfolgreich gelöscht." });
             }
             catch (Exception ex)
             {

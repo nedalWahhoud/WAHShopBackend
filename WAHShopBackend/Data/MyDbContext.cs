@@ -128,7 +128,6 @@ namespace WAHShopBackend.Data
             modelBuilder.Entity<TransactionsCustomers>()
             .Property(e => e.Type)
             .HasConversion<string>();
-            
 
             /* Trigger */
             // trigger TransactionsCustomers create DebtCustomers

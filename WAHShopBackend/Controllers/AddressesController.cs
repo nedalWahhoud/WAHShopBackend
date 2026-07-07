@@ -21,7 +21,7 @@ namespace WAHShopBackend.Controllers
 
                 _context.Addresses.Add(address);
                 int result = await _context.SaveChangesAsync();
-                return Ok(new ValidationResult { Result = result > 0, Message = $"Id:{address.Id}" });
+                return Ok(new ValidationResult { Result = result > 0, Message = $"Id:{address.Id}",NewId = address.Id });
             }
             catch (Exception ex)
             {
@@ -53,15 +53,15 @@ namespace WAHShopBackend.Controllers
         public async Task<IActionResult> DeleteAddress(int id)
         {
             if (id <= 0)
-                return BadRequest(new ValidationResult { Result = false, Message = "Invalid Address ID." });
+                return BadRequest(new ValidationResult { Result = false, Message = "Ungültige ID." });
             try
             {
-                var address = await _context.Addresses.FindAsync(id);
-                if (address == null)
-                    return NotFound(new ValidationResult { Result = false, Message = "Address not found." });
-                _context.Addresses.Remove(address);
-                int result = await _context.SaveChangesAsync();
-                return Ok(new ValidationResult { Result = result > 0, Message = $"Address with ID {id} deleted successfully." });
+                int rowsAffected = await _context.Addresses
+                                   .Where(p => p.Id == id)
+                                   .ExecuteDeleteAsync();
+                if (rowsAffected == 0)
+                    return NotFound(new ValidationResult() { Result = false, Message = "Address nicht gefunden." });
+                return Ok(new ValidationResult { Result = true, Message = $"Address with ID {id} deleted successfully." });
             }
             catch (Exception ex)
             {

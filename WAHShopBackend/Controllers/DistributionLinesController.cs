@@ -106,26 +106,32 @@ namespace WAHShopBackend.Controllers
         public async Task<IActionResult> DeleteDistributionLines(int id)
         {
             if (id <= 0)
-            {
-                return BadRequest(new ValidationResult { Result = false, Message = "Ungültige DistributionLines Id." });
-            }
+                return BadRequest(new ValidationResult { Result = false, Message = "Ungültige Id." });
             try
             {
-                var existingDistributionLines = await _context.DistributionLines.FindAsync(id);
-                if (existingDistributionLines == null)
+                int rowsAffected = await _context.DistributionLines
+                              .Where(p => p.Id == id)
+                              .ExecuteDeleteAsync();
+
+                if (rowsAffected == 0)
+                    return NotFound(new ValidationResult() { Result = false, Message = "DistributionLines nicht gefunden." });
+
+                return Ok(new ValidationResult { Result = true, Message = "DistributionLines erfolgreich gelöscht." });
+            }
+            catch (Microsoft.Data.SqlClient.SqlException sqlEx)
+            {
+                // 547 für Foreign Key verstoßen
+                if(sqlEx.Number == 547)
                 {
-                    return NotFound(new ValidationResult { Result = false, Message = "DistributionLines nicht gefunden." });
+                    return BadRequest(new ValidationResult
+                    {
+                        Result = false,
+                        Message = "Könnte nicht gelöscht werden, da ein Referenzkonflikt(Foreign-Key) in der Datenbank vorliegt."
+                    });
                 }
-                _context.DistributionLines.Remove(existingDistributionLines);
-                int result = await _context.SaveChangesAsync();
-                if (result > 0)
-                {
-                    return Ok(new ValidationResult { Result = true, Message = "DistributionLines erfolgreich gelöscht." });
-                }
-                else
-                {
-                    return StatusCode(500, new ValidationResult { Result = false, Message = "Die Löschung der Verteilungslinien ist fehlgeschlagen." });
-                }
+
+                // Für alle anderen Datenbankaktualisierungsfehler
+                return StatusCode(500, new ValidationResult { Result = false, Message = sqlEx.InnerException?.Message ?? sqlEx.Message });
             }
             catch (Exception ex)
             {

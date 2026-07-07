@@ -142,24 +142,31 @@ namespace WAHShopBackend.Controllers
         public async Task<IActionResult> DeleteGroupProducts(int groupProductsId)
         {
             if (groupProductsId <= 0)
-            {
-                return BadRequest(new ValidationResult { Result = false, Message = "Ungültige Gruppenprodukt-ID." });
-            }
+                return BadRequest(new ValidationResult { Result = false, Message = "Ungültige Id." });
             try
             {
-                var groupProduct = await _context.GroupProducts.FindAsync(groupProductsId);
-                if (groupProduct == null)
+                int rowsAffected = await _context.GroupProducts
+                              .Where(p => p.Id == groupProductsId)
+                              .ExecuteDeleteAsync();
+                if (rowsAffected == 0)
+                    return NotFound(new ValidationResult() { Result = false, Message = "Gruppenprodukte nicht gefunden." });
+
+                return Ok(new ValidationResult { Result = true, Message = "Gruppenprodukte erfolgreich gelöscht." });
+            }
+            catch (Microsoft.Data.SqlClient.SqlException sqlEx)
+            {
+                // 547 für Foreign Key verstoßen
+                if (sqlEx.Number == 547)
                 {
-                    return NotFound(new ValidationResult { Result = false, Message = "Gruppenprodukte nicht gefunden." });
+                    return BadRequest(new ValidationResult
+                    {
+                        Result = false,
+                        Message = "könnte nicht gelöscht werden, da ein Referenzkonflikt(Foreign-Key) in der Datenbank vorliegt."
+                    });
                 }
-                _context.GroupProducts.Remove(groupProduct);
-                int result = await _context.SaveChangesAsync();
-                if (result > 0)
-                {
-                    return Ok(new ValidationResult { Result = true, Message = "Gruppenprodukte erfolgreich gelöscht." });
-                }
-                else
-                    return StatusCode(500, new ValidationResult { Result = false, Message = "Fehler bei löschen der Gruppenprodukte" } );
+
+                // Für alle anderen Datenbankaktualisierungsfehler
+                return StatusCode(500, new ValidationResult { Result = false, Message = sqlEx.InnerException?.Message ?? sqlEx.Message });
             }
             catch (Exception ex)
             {

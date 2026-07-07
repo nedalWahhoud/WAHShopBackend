@@ -142,23 +142,19 @@ namespace WAHShopBackend.Controllers
         [HttpDelete("deleteCarouselImage/{id}")]
         public async Task<IActionResult> DeleteCarouselImage(int id)
         {
+            if (id <= 0)
+                return BadRequest(new ValidationResult() { Result = false, Message = "Ungültige Id." });
             try
             {
-                var carouselImage = await _context.CarouselImage.FindAsync(id);
-                if (carouselImage == null)
-                    return NotFound(new ValidationResult { Result = false, Message = "Carousel image nicht gefunden." });
+                int rowsAffected = await _context.CarouselImage
+                                  .Where(p => p.Id == id)
+                                  .ExecuteDeleteAsync();
+                if (rowsAffected == 0)
+                    return NotFound(new ValidationResult() { Result = false, Message = "Carousel nicht gefunden." });
 
-                _context.CarouselImage.Remove(carouselImage);
-                int result = await _context.SaveChangesAsync();
-                if (result > 0)
-                {
-                    _carouselImagesService.DeleteImage(id);
-                    return Ok(new ValidationResult { Result = true, Message = "Carousel image erfolgreich gelöscht." });
-                }
-                else
-                {
-                    return StatusCode(500, new ValidationResult { Result = false, Message = "Fehler beim Löschen des Carousel images." });
-                }
+                _carouselImagesService.DeleteImage(id);
+                return Ok(new ValidationResult { Result = true, Message = "Carousel image erfolgreich gelöscht." });
+
             }
             catch (Exception ex)
             {

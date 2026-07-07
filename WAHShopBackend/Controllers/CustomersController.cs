@@ -306,9 +306,8 @@ namespace WAHShopBackend.Controllers
         public async Task<IActionResult> DeleteCustomer(int id)
         {
             if (id <= 0)
-            {
-                return BadRequest(new ValidationResult { Result = false, Message = "Ungültige Kunden Id." });
-            }
+                return BadRequest(new ValidationResult { Result = false, Message = "Ungültige Id." });
+         
             try
             {
                 var existingCustomer = await _context.Customers.FindAsync(id);

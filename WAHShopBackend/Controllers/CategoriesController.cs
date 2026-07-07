@@ -68,23 +68,34 @@ namespace WAHShopBackend.Controllers
         [HttpDelete("deleteCategory/{id}")]
         public async Task<IActionResult> DeleteCategory(int id)
         {
+            if (id <= 0)
+                return BadRequest(new ValidationResult() { Result = false, Message = "Ungültige Id." });
             try
             {
-                var category = await _context.Categories.FindAsync(id);
-                if (category == null)
+                int rowsAffected = await _context.Categories
+                                   .Where(p => p.Id == id)
+                                   .ExecuteDeleteAsync();
+
+                if (rowsAffected == 0)
+                    return NotFound(new ValidationResult() { Result = false, Message = "Category nicht gefunden." });
+
+                return Ok(new ValidationResult { Result = true, Message = "Category erfolgreich gelöscht." });
+
+            }
+            catch (Microsoft.Data.SqlClient.SqlException sqlEx)
+            {
+                // 547 für Foreign Key verstoßen
+                if (sqlEx.Number == 547)
                 {
-                    return NotFound(new ValidationResult { Result = false, Message = "Category nicht gefunden." });
+                    return BadRequest(new ValidationResult
+                    {
+                        Result = false,
+                        Message = "könnte nicht gelöscht werden, da ein Referenzkonflikt(Foreign-Key) in der Datenbank vorliegt."
+                    });
                 }
-                _context.Categories.Remove(category);
-                int result = await _context.SaveChangesAsync();
-                if (result > 0)
-                {
-                    return Ok(new ValidationResult { Result = true, Message = "Category erfolgreich gelöscht." });
-                }
-                else
-                {
-                    return StatusCode(500, new ValidationResult { Result = false, Message = "Category-Löschung fehlgeschlagen" });
-                }
+
+                // Für alle anderen Datenbankaktualisierungsfehler
+                return StatusCode(500, new ValidationResult { Result = false, Message = sqlEx.InnerException?.Message ?? sqlEx.Message });
             }
             catch (Exception ex)
             {

@@ -54,14 +54,19 @@ namespace WAHShopBackend.Controllers
         [HttpDelete("deleteDiscountCode/{id}")]
         public async Task<IActionResult> DeleteDiscountCode(int id)
         {
+            if (id <= 0)
+                return BadRequest(new ValidationResult { Result = false, Message = "Ungültige Id." });
             try
             {
-                var discountCode = await _context.DiscountCodes.FindAsync(id);
-                if (discountCode == null)
-                    return NotFound(new ValidationResult { Result = false, Message = "Discount code not found." });
-                _context.DiscountCodes.Remove(discountCode);
-                int result = await _context.SaveChangesAsync();
-                return Ok(new ValidationResult { Result = result > 0, Message = $"Discount code with ID: {id} deleted." });
+                int rowsAffected = await _context.DiscountCodes
+                                 .Where(p => p.Id == id)
+                                 .ExecuteDeleteAsync();
+
+                if (rowsAffected == 0)
+                    return NotFound(new ValidationResult() { Result = false, Message = "Discount code nicht gefunden." });
+
+                return Ok(new ValidationResult { Result = true, Message = $"Discount code mit Id: {id} gelöscht." });
+
             }
             catch (Exception ex)
             {
@@ -71,14 +76,19 @@ namespace WAHShopBackend.Controllers
         [HttpDelete("deleteDiscountCategory/{id}")]
         public async Task<IActionResult> DeleteDiscountCategory(int id)
         {
+            if (id <= 0)
+                return BadRequest(new ValidationResult { Result = false, Message = "Ungültige Id." });
+
             try
             {
-                var discountCategory = await _context.DiscountCategory.FindAsync(id);
-                if (discountCategory == null)
-                    return NotFound(new ValidationResult { Result = false, Message = "Discount category not found." });
-                _context.DiscountCategory.Remove(discountCategory);
-                int result = await _context.SaveChangesAsync();
-                return Ok(new ValidationResult { Result = result > 0, Message = $"Discount category with ID: {id} deleted." });
+                int rowsAffected = await _context.DiscountCategory
+                              .Where(p => p.Id == id)
+                              .ExecuteDeleteAsync();
+
+                if (rowsAffected == 0)
+                    return NotFound(new ValidationResult() { Result = false, Message = "Discount category nicht gefunden." });
+
+                return Ok(new ValidationResult { Result = true, Message = $"Discount category mit Id: {id} gelöscht." });
             }
             catch (Exception ex)
             {
