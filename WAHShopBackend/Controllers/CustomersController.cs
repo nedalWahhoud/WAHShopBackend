@@ -178,19 +178,27 @@ namespace WAHShopBackend.Controllers
         }
         private async Task<int> ShiftStopNumbersAsync(int distributionLineId, int newStopNumber, int? oldStopNumber, int currentCustomerId = 0, bool isDelete = false, bool shouldStopnummerShift = true)
         {
+            // if current customerhaltStopnummber hat sich geändert
+            bool hasStopNumberChanged = oldStopNumber != newStopNumber;
+            if (!isDelete && !hasStopNumberChanged)
+            {
+                return -1;
+            }
 
             /* -1 bdeuetet dass die newStopNumber nix geändert und muss nixht angefasst werden */
 
             // prüfen ob die Stelle noch belegt ist 
             bool isStopStillOccupied = await _context.Customers
                    .AnyAsync(c => c.DistributionLineId == distributionLineId && c.StopNumber == oldStopNumber && c.Id != currentCustomerId);
+            
+
 
             if (shouldStopnummerShift)
             {
                 // löschen
                 if (isDelete)
                 {
-                    // wenn  die Haltestelle noch belegt ist, tun wir nichts, da muss keine Verschiebung stattfinden, weil die Lücke nicht geschlossen werden muss.
+                    // wenn die Haltestelle noch belegt ist, tun wir nichts, da muss keine Verschiebung stattfinden, weil die Lücke nicht geschlossen werden muss.
                     if (isStopStillOccupied)
                         return -1;
 

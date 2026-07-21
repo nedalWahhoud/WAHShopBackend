@@ -246,7 +246,6 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
-        
         [HttpPost("updateProduct")]
         public async Task<IActionResult> UpdateProduct([FromBody] Product editProduct)
         {
@@ -318,29 +317,6 @@ namespace WAHShopBackend.Controllers
                 return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
-        [HttpGet("getTaxRates")]
-        public async Task<IActionResult> GetTaxRates()
-        {
-            try
-            {
-                var taxRates = await _context.TaxRates
-                    .AsNoTracking()
-                    .ToListAsync();
-
-                var getItems = new GetItems<TaxRate>
-                {
-                    Items = taxRates,
-                    AllItemsLoaded = true
-                };
-
-                return Ok(getItems);
-            }
-            catch
-            {
-                return StatusCode(500, new ValidationResult { Result = false, Message = "Internal server error" });
-            }
-        }
-        
         [HttpDelete("deleteProduct/{id}")]
         public async Task<IActionResult> DeleteProduct(int id)
         {

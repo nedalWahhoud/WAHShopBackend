@@ -65,7 +65,7 @@ namespace WAHShopBackend.Controllers
             try
             {
                 // Berechne das Datum von vor einem Monat.
-                var oneMonthAgo = DateTime.Now.AddMonths(-1);
+                var oneMonthAgo = DateTime.Today.AddDays(-21);
 
                 // Löschen Sie Zahlungen direkt aus der Datenbank 
                 await _context.OneTimePayments
@@ -87,17 +87,17 @@ namespace WAHShopBackend.Controllers
         {
             try
             {
-                var groupedData = await _context.OneTimePayments
-            .Include(p => p.Customer)
-            .Where(p => p.DistributionLineId == lineId)
-            .GroupBy(p => p.PickupDate.Date) // gruppieren nach Datum (nur Tag, Monat, Jahr)
-            .Select(g => new OneTimePaymentsGroupDto
-            {
-                GroupPickupDate = g.Key,
-                // inner sortieren nach StopNumber, damit die Zahlungen in der Reihenfolge der Kundenstops innerhalb der Gruppe angezeigt werden
-                Payments = g.OrderBy(p => p.Customer != null ? p.Customer.StopNumber : 0)
+             var groupedData = await _context.OneTimePayments
+               .Include(p => p.Customer)
+               .Where(p => p.DistributionLineId == lineId)
+               .GroupBy(p => p.PickupDate.Date) // gruppieren nach Datum (nur Tag, Monat, Jahr)
+               .Select(g => new OneTimePaymentsGroupDto
+               {
+                  GroupPickupDate = g.Key,
+                  // inner sortieren nach StopNumber, damit die Zahlungen in der Reihenfolge der Kundenstops innerhalb der Gruppe angezeigt werden
+                  Payments = g.OrderBy(p => p.Customer != null ? p.Customer.StopNumber : 0)
                             .ToList()
-            })
+               })
             .OrderBy(g => g.GroupPickupDate) // die Gruppen selbst nach Datum sortieren
             .ToListAsync();
 
