@@ -17,6 +17,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.  
 builder.Services.AddControllers();
+
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle  
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -108,6 +110,18 @@ else
 }
 // Speichern Sie die formatierte Version in DI.
 builder.Services.AddSingleton(appConfig);
+// erlauben die Blazor WASM auf die API zuzugreifen
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowBlazorApp", policy =>
+    {
+        policy.WithOrigins(appConfig.AllowedOriginsManager)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
 
 var app = builder.Build();
 
@@ -142,6 +156,11 @@ if (app.Environment.IsDevelopment())
 // server 
 app.UseSwagger();
 app.UseSwaggerUI();
+
+app.UseRouting();
+// a
+app.UseCors("AllowBlazorApp");
+
 
 app.UseHttpsRedirection();
 app.UseAuthentication();

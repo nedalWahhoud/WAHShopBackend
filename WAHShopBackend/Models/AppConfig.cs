@@ -9,5 +9,6 @@
         public string CarouselImagesproxy { get; set; } = string.Empty;
         public string WebRequestProductImagePath { get; set; } = string.Empty;
         public string ShareStoragePath { get; set; } = string.Empty;
+        public string[] AllowedOriginsManager { get; set; } = [];
     }
 }

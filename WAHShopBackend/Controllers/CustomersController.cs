@@ -144,10 +144,7 @@ namespace WAHShopBackend.Controllers
                     // wenn nötig bearbeiten die stopnumber
                     int newStopNumber = await ShiftStopNumbersAsync(customer.DistributionLineId, customer.StopNumber, existingCustomer.StopNumber, customer.Id,false, customer.shouldStopnummerShift);
 
-                  
-
                     _context.Entry(existingCustomer).CurrentValues.SetValues(customer);
-
 
                     // wenn die newStopNumber nicht -1 ist, bedeutet dass die newStopnumber von dem Kunden in FUnktion ShiftStopNumbersAsync geändert wurde, und muss die Änderung umgesetzt werden.
                     if (newStopNumber != -1)

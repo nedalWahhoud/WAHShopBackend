@@ -12,14 +12,34 @@ namespace WAHShopBackend.Controllers
     {
         private readonly MyDbContext _context = context;
         private readonly CarouselImagesService _carouselImagesService = carouselImagesService;
-        [HttpGet("getAllCarouselImages")]
-        public async Task<IActionResult> GetCarouselImages()
+        [HttpGet("getActive")]
+        public async Task<IActionResult> GetActive()
         {
             try
             {
                 var currentDate = DateTime.Now;
                 var carouselImages = await _context.CarouselImage
                     .Where(ci => ci.StartDate <= currentDate && ci.EndDate >= currentDate)
+                    .OrderBy(ci => ci.DisplayOrder)
+                    .ToListAsync();
+                if (carouselImages == null || carouselImages.Count == 0)
+                {
+                    return NotFound(new ValidationResult { Result = false, Message = "No carousel images found." });
+                }
+                return Ok(carouselImages);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
+            }
+        }
+        [HttpGet("getAll")]
+        public async Task<IActionResult> GetAll()
+        {
+            try
+            {
+                var currentDate = DateTime.Now;
+                var carouselImages = await _context.CarouselImage
                     .OrderBy(ci => ci.DisplayOrder)
                     .ToListAsync();
                 if (carouselImages == null || carouselImages.Count == 0)
