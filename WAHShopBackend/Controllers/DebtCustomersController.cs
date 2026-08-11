@@ -23,12 +23,12 @@ namespace WAHShopBackend.Controllers
                 }
                 else
                 {
-                    return NotFound(new ValidationResult { Result = false, Message = "Keine Schuldenaufzeichnung für den angegebenen Kunden gefunden." });
+                    return NoContent();
                 }
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Message = ex.Message });
+                return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
         [HttpDelete("deleteDebtByCustomerId/{customerId}")]
@@ -50,7 +50,7 @@ namespace WAHShopBackend.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new ValidationResult { Result = true, Message = ex.Message });
+                return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
             }
         }
     }
