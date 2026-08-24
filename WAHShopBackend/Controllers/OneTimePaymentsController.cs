@@ -17,25 +17,6 @@ namespace WAHShopBackend.Controllers
                 return BadRequest(new ValidationResult() { Result = false, Message = "Die Daten für die Einmalzahlung dürfen nicht null sein.." });
             try
             {
-                var startOfDay = oneTimePayment.PickupDate.Date;
-                var endOfDay = startOfDay.AddDays(1);
-
-                // Überprüfen, ob bereits eine Einmalzahlung für denselben Kunden, dieselbe Verteilungslinie und dasselbe PickupDate existiert
-                bool isDuplicate = await _context.OneTimePayments.AnyAsync(p =>
-                    p.CustomerId == oneTimePayment.CustomerId &&
-                    p.DistributionLineId == oneTimePayment.DistributionLineId &&
-                    p.PickupDate >= startOfDay &&
-                    p.PickupDate < endOfDay);
-
-                if (isDuplicate)
-                {
-                    return BadRequest(new ValidationResult()
-                    {
-                        Result = false,
-                        Message = "Für diesen Kunden existiert bereits eine Einmalzahlung in diesem Datum, Sie können eine Zahlung auf der Einmalzahlung Seite bearbeiten. / يوجد بالفعل دفعة لهذا الزبون في هاذا اليوم , يمكنك تعديل عملية الدفع في صفحة الدفع Einmalzahlung."
-                    });
-                }
-
                 // Alte Zahlungen im Hintergrund löschen
                 await DeleteOldPaymentsAsync();
                 // add
