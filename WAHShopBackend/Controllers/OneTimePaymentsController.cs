@@ -35,6 +35,7 @@ namespace WAHShopBackend.Controllers
         private static DateTime? _lastCleanupDate = null;
         private async Task DeleteOldPaymentsAsync()
         {
+            // wir nutze tody und nicht letztes PickupDate, damit die Fehler des Nutzer vermieden, wenn er zukünftigie Zahlungen für die Zukunft erstellt, und die Zahlungen für die Vergangenheit nicht gelöscht werden.
             DateTime tody = DateTime.Now.Date;
 
             if(tody == _lastCleanupDate)
@@ -45,17 +46,16 @@ namespace WAHShopBackend.Controllers
 
             try
             {
-                // Berechne das Datum von vor einem Monat.
+                // Berechne das Datum von vor bestimmte zeit.
                 var oneMonthAgo = DateTime.Today.AddDays(-21);
 
                 // Löschen Sie Zahlungen direkt aus der Datenbank 
                 await _context.OneTimePayments
-                    .Where(p => p.PickupDate < oneMonthAgo)
+                    .Where(p => p.PickupDate <= oneMonthAgo)
                     .ExecuteDeleteAsync();
 
                 // Aktualisiere das letzte Aufräumdatum
                 _lastCleanupDate = tody;
-
             }
             catch (Exception ex)
             {
