@@ -10,6 +10,7 @@ namespace WAHShopBackend.Models
         public DateTime EndDate { get; set; }
         public int DisplayOrder { get; set; }
         public DateTime LastModified { get; set; }
+        public bool IsActive { get; set; }
         [NotMapped]
         public byte[]? ImageBytes { get; set; }
     }

@@ -19,7 +19,7 @@ namespace WAHShopBackend.Controllers
             {
                 var currentDate = DateTime.Now;
                 var carouselImages = await _context.CarouselImage
-                    .Where(ci => ci.StartDate <= currentDate && ci.EndDate >= currentDate)
+                    .Where(ci => ci.StartDate <= currentDate && ci.EndDate >= currentDate && ci.IsActive)
                     .OrderBy(ci => ci.DisplayOrder)
                     .ToListAsync();
                 if (carouselImages == null || carouselImages.Count == 0)
@@ -153,6 +153,29 @@ namespace WAHShopBackend.Controllers
             catch (DbUpdateConcurrencyException)
             {
                 return StatusCode(409, new ValidationResult { Result = false, Message = "Der Lieferant wurde von einem anderen Prozess aktualisiert. Bitte laden Sie die Daten erneut und versuchen Sie es erneut." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ValidationResult { Result = false, Message = ex.Message });
+            }
+        }
+        [HttpPut("toggleIsActive/{id}")]
+        public async Task<IActionResult> ToggleIsActive(int id)
+        {
+            if (id <= 0)
+                return BadRequest(new ValidationResult() { Result = false, Message = "Ungültige Id." });
+            try
+            {
+                var carouselImage = await _context.CarouselImage.FindAsync(id);
+                if (carouselImage == null)
+                    return NotFound(new ValidationResult() { Result = false, Message = "Carousel nicht gefunden." });
+                carouselImage.IsActive = !carouselImage.IsActive;
+                _context.Entry(carouselImage).State = EntityState.Modified;
+                int result = await _context.SaveChangesAsync();
+                if (result > 0)
+                    return Ok(new ValidationResult { Result = true, Message = "Carousel image erfolgreich aktualisiert." });
+                else
+                    return StatusCode(500, new ValidationResult { Result = false, Message = "Fehler beim Aktualisieren des Carousel images." });
             }
             catch (Exception ex)
             {
