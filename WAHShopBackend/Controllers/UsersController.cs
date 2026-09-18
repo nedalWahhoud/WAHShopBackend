@@ -428,13 +428,14 @@ namespace WAHShopBackend.Controllers
         }
         //  Redirect to Google
         [HttpGet("google-login")]
-        public IActionResult GoogleLogin([FromQuery] bool? rememberMe)
+        public IActionResult GoogleLogin([FromQuery] bool? rememberMe, [FromQuery] char loginSource)
         {
+            // var redirectUrl = "https://syriana-supermarkt.de/api/users/google-response";
             var redirectUrl = Url.Action("GoogleResponse", "Users");
             var properties = _signInManager.ConfigureExternalAuthenticationProperties("Google", redirectUrl);
 
             properties.Items["rememberMe"] = rememberMe.ToString();
-
+            properties.Items["loginSource"] = loginSource.ToString();
 
             return Challenge(properties, "Google");
         }
@@ -455,6 +456,12 @@ namespace WAHShopBackend.Controllers
             {
                 _ = bool.TryParse(rememberMeValue, out rememberMe);
             }
+            // get loginSource value
+            char loginSource = '0';
+            if (info.AuthenticationProperties?.Items != null && info.AuthenticationProperties.Items.TryGetValue("loginSource", out var loginSourceValue))
+            {
+                _ = char.TryParse(loginSourceValue, out loginSource);
+            }
 
             if (email == null || userName == null)
             {
@@ -471,11 +478,14 @@ namespace WAHShopBackend.Controllers
             if (userExists)
             {
                 // User exist, proceed to sign in
-                var user = await _context.Users.FirstOrDefaultAsync(userFilter);
+                var user = await _context.Users
+                    .Include(u => u.UserPermissions)
+                     .ThenInclude(up => up.Permission)
+                    .FirstOrDefaultAsync(userFilter);
                 if (user == null)
                     return BadRequest("Benutzer nicht gefunden.");
 
-                jwtToken = GetToken(user);
+                jwtToken = GetToken(user, user?.UserPermissions);
             }
             else
             {
@@ -504,7 +514,10 @@ namespace WAHShopBackend.Controllers
                     return BadRequest(new ValidationResult { Result = false, Message = "Fehler beim Erstellen des Benutzers" });
                 }
             }
-            return Redirect($"{_appConfig.Domin}/auth-success?token={jwtToken}&rememberMe={rememberMe}");
+
+            string destinationUrl = loginSource == 'w' ? _appConfig.Domin : _appConfig.DominManager;
+
+            return Redirect($"{destinationUrl}/auth-success?token={jwtToken}&rememberMe={rememberMe}");
         }
     }
 }

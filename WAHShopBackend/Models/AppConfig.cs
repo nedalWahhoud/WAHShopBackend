@@ -5,6 +5,7 @@
         public string ApiBaseUrl { get; set; } = string.Empty;
         public Uri ApiUri => new(ApiBaseUrl);
         public string Domin { get; set; } = string.Empty;
+        public string DominManager { get; set; } = string.Empty;
         public string ProductImagesproxy { get; set; } = string.Empty;
         public string CarouselImagesproxy { get; set; } = string.Empty;
         public string WebRequestProductImagePath { get; set; } = string.Empty;
